@@ -1,0 +1,456 @@
+---
+title: "Minigames reference"
+description: "Every minigame, its export, options, defaults, and ranges."
+---
+
+This page is the single source of truth for every minigame. Each section lists the export, the player mechanic, and every option with its valid range and per-difficulty default.
+
+<Note>
+  All options are optional. The numbers shown are clamped at runtime — passing values outside the range does not error; they get clamped to the nearest endpoint. Per-difficulty defaults are picked up automatically when an option is omitted.
+</Note>
+
+## Reference table
+
+| Game | Export | Variants | Mechanic |
+| --- | --- | --- | --- |
+| [Pattern](#pattern) | `Pattern(opts)` | terminal, bare | Repeat a flashing sequence on a grid. |
+| [Circuit](#circuit) | `Circuit(opts)` | terminal, bare | Rotate pipes to connect endpoints. |
+| [Sequence](#sequence) | `Sequence(opts)` | terminal, bare | Greek letters appear, hide, then re-enter. |
+| [Verbal](#verbal) | `Verbal(opts)` | terminal, bare | Mark words as `SEEN` or `NEW`. |
+| [Memory](#memory) | `Memory(opts)` | terminal, bare | Memorize lit tiles, click them all. |
+| [Crack](#crack) | `Crack(opts)` | terminal, bare | Mastermind-style code deduction. |
+| [Sniffer](#sniffer) | `Sniffer(opts)` | terminal, bare | Click matching packets in a live stream. |
+| [ColorCount](#colorcount) | `ColorCount(opts)` | terminal, bare | Count colored cells, answer questions. |
+| [Drill](#drill) | `Drill(opts)` | bare-only | Manage drill heat vs depth. |
+| [Lockpick](#lockpick) | `Lockpick(opts)` | strip-only | Sweep timing on a moving cursor. |
+| [Fishing](#fishing) | `Fishing(opts)` | strip-only | Park a moving zone on a fish. |
+| [Path](#path) | `Path(opts)` | terminal, bare | Click points in nearest-neighbor order. |
+| [Untangle](#untangle) | `Untangle(opts)` | terminal, bare | Drag nodes until no edges cross. |
+| [Hotkey](#hotkey) | `Hotkey(opts)` | terminal, bare | Hit each shown key inside a window. |
+| [Tracer](#tracer) | `Tracer(opts)` | terminal, bare | Hold cursor inside a moving target. |
+| [Aim](#aim) | `Aim(opts)` | terminal, bare | Click shrinking targets before they expire. |
+| [Cadence](#cadence) | `Cadence(opts)` | terminal, bare | Hold a key for the right duration. |
+| [Flick](#flick) | `Flick(opts)` | strip-only | Tap arrow keys in sequence. |
+| [Cut](#cut) | `Cut(opts)` | strip-only | Steer a cursor along a wavy line. |
+| [Shell](#shell) | `Shell(opts)` | terminal, bare | Complete shell-style typed goals. |
+| [Outrun](#outrun) | `Outrun(opts)` | terminal, bare | Type characters before the trace fills. |
+| [Balance](#balance) | `Balance(opts)` | strip-only | Inverted-pendulum hold with Q/E. |
+| [Masher](#masher) | `Masher(opts)` | strip-only | Mash one or more keys to fill an arc. |
+| [Minesweeper](#minesweeper) | `Minesweeper(opts)` | terminal, bare | Classic Minesweeper. |
+| [Rhythm](#rhythm) | `Rhythm(opts)` | terminal, bare | 4-lane note hits. |
+| [LightsOut](#lightsout) | `LightsOut(opts)` | terminal, bare | Toggle every cell on. |
+| [Towers](#towers) | `Towers(opts)` | terminal, bare | Stack-and-slice timing game. |
+| [Safe](#safe) | `Safe(opts)` | terminal, bare | Audio-clue dial safecracker. |
+| [Frequency](#frequency-solo-only-on-this-page) | `Frequency(opts)` | bare, screen-4x3 | Multiplayer tuning game (see [its own page](/cc_minigames/advanced/frequency-multiplayer)). |
+
+---
+
+## Pattern
+
+NxN grid flashes a growing sequence; player repeats it by clicking.
+
+```lua
+exports.cc_minigames:Pattern({ difficulty = 'hard', rounds = 6 })
+```
+
+| Option | Range | Default (medium) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `rounds` | 1–12 | 4 |
+| `gridSize` | 3–6 | 4 |
+
+## Circuit
+
+Grid of rotatable pipes; connect the start endpoint to the end before time runs out.
+
+| Option | Range | Default (medium) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `gridSize` | 3–7 | 5 |
+| `timeLimit` | seconds, `0` = none | 60 |
+
+## Sequence
+
+Greek letters appear one at a time, the full sequence holds, then hides. Player re-enters it on the keypad.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `length` | 3–9 | 4 / 5 / 6 |
+| `revealMs` | ≥ 250 | 900 / 750 / 600 |
+| `holdMs` | ≥ 1000 | 4500 / 3500 / 2500 |
+
+## Verbal
+
+One word at a time. Click `SEEN` (Q) or `NEW` (E). Lose on too many mistakes; win on a streak.
+
+| Option | Range | Default (medium) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `lives` | 1–5 | 3 |
+| `winStreak` | 5–40 | 15 |
+
+## Memory
+
+Random tiles light up on a grid, then hide. Click all of them.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `gridSize` | 3–6 | 4 |
+| `tiles` | 2–16 | 4 / 6 / 8 |
+| `mistakes` | 0–10 | 0 (instant-fail) |
+| `showTime` | ≥ 600 ms | 1800 |
+
+## Crack
+
+Mastermind. Deduce the hidden color combo from per-slot feedback pegs.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `codeLength` | 3–6 | 3 / 4 / 4 |
+| `paletteSize` | 3–8 | 5 / 6 / 7 |
+| `attempts` | 3–15 | 6 / 5 / 5 |
+| `duplicates` | `true` \| `false` | `false` (medium) / `true` (hard) |
+| `timeLimit` | seconds, `0` = none | 0 |
+
+## Sniffer
+
+A live packet stream scrolls past. Click every packet matching the target signature (proto + IP + port + flag). Missed or false clicks cost a life.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `targets` | 1–10 | 3 / 4 / 5 |
+| `spawnMs` | 200–2000 | 1200 / 950 / 700 |
+| `misses` | 0–10 | 3 / 2 / 1 |
+
+## ColorCount
+
+A grid of colored cells flashes. Hide it, then ask "how many of color X were on the board". Multiple rounds.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `gridSize` | 3–7 | 7 / 8 / 9 |
+| `showTime` | ≥ 1000 ms | 10000 / 9000 / 9000 |
+| `rounds` | 1–10 | 2 / 3 / 3 |
+| `questionsPerRound` | 1–5 | 1 |
+| `paletteSize` | 2–6 | 2 / 3 / 4 |
+| `maxPerColor` | 1–30 | 4 / 5 / 6 |
+| `zeroChance` | 0–1 | 0.10 / 0.18 / 0.25 |
+| `mistakes` | 0–10 | 1 / 1 / 0 |
+
+<Note>
+  `gridSize` is clamped to a max of 7 by the normalizer even though the medium and hard defaults reference 8 and 9. The defaults table is read first, then the clamp applies — meaning all three difficulties currently render at gridSize 7 unless you pass an explicit override below 7. Worth knowing if you're tuning.
+</Note>
+
+## Drill
+
+Manage drill power: heat rises with applied power, cools when idle. Strikes cost lives; depth is the goal.
+
+<Note>
+  Drill is `bare`-only. The terminal chrome reads thematically wrong against an industrial drill panel.
+</Note>
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `depth` | 20–400 | 100 / 130 / 160 |
+| `heatRate` | 5–200 (heat/sec at 100% power) | 24 / 32 / 46 |
+| `coolRate` | 5–200 (heat/sec at 0% power) | 26 / 20 / 16 |
+| `strikes` | 0–10 | 3 / 3 / 2 |
+| `timeLimit` | 0–600 seconds | 60 / 55 / 45 |
+
+## Lockpick
+
+A cursor sweeps a horizontal track. Tap when the cursor is over the (hidden) zone to set a pin. Misses cost strikes.
+
+<Note>Lockpick is `strip`-only.</Note>
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `pins` | 1–12 | 4 / 5 / 6 |
+| `sweepMs` | 200–5000 | 1300 / 950 / 700 |
+| `zoneFrac` | 0.02–0.5 | 0.13 / 0.09 / 0.06 |
+| `strikes` | 0–10 | 2 / 1 / 1 |
+| `timeLimit` | 0–600 seconds | 0 (none) |
+
+## Fishing
+
+Direct port of the cc-fishgame mechanic — keep a moving zone over a fish until the bar fills. Uses **rarity** instead of difficulty.
+
+<Note>Fishing is `strip`-only.</Note>
+
+| Option | Range | Default per rarity |
+| --- | --- | --- |
+| `rarity` | `common` \| `uncommon` \| `rare` \| `epic` \| `legendary` | `common` |
+| `zoneFrac` | 0.05–0.6 | scales down by rarity (≈ 0.38 common → 0.21 legendary) |
+| `noiseMag` | 0.5–30 | 1.5 / 2.0 / 3.0 / 4.0 / 4.5 |
+| `timeLimit` | 2–120 seconds | 30 / 27 / 24 / 20 / 17 |
+
+## Path
+
+A field of points appears with one highlighted as the start. Click the nearest unvisited point. Wrong-click instant-fails. Multiple rounds.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `pointsBase` | 2–20 | 5 / 6 / 8 |
+| `pointsStep` | 0–8 | 1 / 2 / 2 |
+| `rounds` | 1–10 | 3 |
+| `timeLimit` | 2–600 seconds | 30 / 25 / 20 |
+
+## Untangle
+
+A planar-by-construction graph spawns with edges visibly intersecting. Drag points until no two edges cross.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `points` | 3–20 | 6 / 8 / 10 |
+| `density` | 1.0–3.0 (edges = round(points × density)) | 1.4 / 1.6 / 1.7 |
+| `timeLimit` | 5–600 seconds | 35 / 30 / 25 |
+| `showIntersections` | `boolean` | `true` (easy/medium) / `false` (hard) |
+
+## Hotkey
+
+Each prompt shows a key and a window. Hit it inside the window or eat a miss.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `targets` | 1–40 | 8 / 10 / 12 |
+| `windowMs` | ≥ 150 | 1300 / 950 / 700 |
+| `gapMs` | ≥ 0 | 350 / 250 / 180 |
+| `misses` | 0–10 | 2 / 1 / 0 |
+
+## Tracer
+
+Hold the cursor inside a moving target circle for a duration.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `holdMs` | ≥ 1000 | 4000 / 5000 / 6000 |
+| `tolerance` | 12–120 px | 60 / 45 / 32 |
+| `speed` | 0.3–4.0 | 1.0 / 1.4 / 1.9 |
+| `volatility` | 0.0–4.0 | 0.5 / 1.0 / 1.6 |
+| `timeLimit` | 0–180 seconds | 25 |
+
+## Aim
+
+Click shrinking circles before they vanish.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `targets` | 1–100 | 12 / 15 / 20 |
+| `lifetimeMs` | ≥ 200 | 2100 / 1500 / 1050 |
+| `startRadius` | 8–60 px | 28 / 24 / 20 |
+| `endRadius` | 2–40 px | 6 / 4 / 3 |
+| `misses` | 0–20 | 4 / 2 / 1 |
+| `timeLimit` | 0–300 seconds | 60 |
+
+## Cadence
+
+Hold a key for a target duration with a percentage tolerance (and a floor for short targets).
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `holds` | 1–12 | 3 / 4 / 5 |
+| `tolerancePct` | 0.01–0.5 | 0.18 / 0.12 / 0.07 |
+| `toleranceFloorMs` | 40–2000 | 600 / 450 / 300 |
+| `minDurationMs` | 1000–20000 | 5000 |
+| `maxDurationMs` | 1000–30000 | 15000 |
+| `misses` | 0–10 | 2 / 1 / 0 |
+
+## Flick
+
+A row of arrow keys. Tap them in order before time runs out.
+
+<Note>Flick is `strip`-only.</Note>
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `length` | 2–40 | 5 / 8 / 12 |
+| `timeMs` | 1000–30000 | 6000 / 5500 / 5000 |
+
+## Cut
+
+Steer a cursor along a wavy guideline without slipping off.
+
+<Note>Cut is `strip`-only.</Note>
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `widthFrac` | 0.04–0.6 | 0.32 / 0.22 / 0.14 |
+| `amplitudeFrac` | 0.0–0.45 | 0.30 / 0.40 / 0.40 |
+| `bumps` | 1–8 | 2 / 3 / 4 |
+| `timeMs` | 0–60000 | 8000 / 7000 / 6000 |
+
+## Shell
+
+Type-through goals on a fake shell. Difficulty scales the goal count; the timer is shared across all goals.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `timeMs` | 10000–600000 | 150000 |
+| `goals` | 1–8 | 1 / 2 / 3 |
+
+## Outrun
+
+Type characters before a "trace" bar fills. Higher difficulty = less time, more chars, harsher lines.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `traceMs` | 10000–300000 | 65000 / 55000 / 45000 |
+| `chars` | 40–2000 | 160 / 220 / 300 |
+
+## Balance
+
+Inverted-pendulum dial. Q/E apply held-counter-torque (which ramps up). Stay in the green wedge for `holdSeconds`.
+
+<Note>Balance is `strip`-only.</Note>
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `holdSeconds` | 2–60 | 8 / 10 / 12 |
+| `gravity` | 0.5–20 | 2.5 / 3.0 / 3.4 |
+| `driftForce` | 0–20 | 1.2 / 1.8 / 2.0 |
+| `pushStrength` | 0.5–20 | 7.0 / 7.5 / 8.0 |
+| `pushRampMs` | 50–5000 | 700 / 600 / 450 |
+| `greenFrac` | 0.05–0.95 | 0.55 / 0.45 / 0.35 |
+| `yellowFrac` | (greenFrac+0.05)–0.98 | 0.85 / 0.72 / 0.66 |
+
+## Masher
+
+Mash a key to fill an arc faster than it drains. Optionally split into multiple keys.
+
+<Note>Masher is `strip`-only.</Note>
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `gainPerPress` | 0.001–0.5 (arc % per press) | 0.040 / 0.030 / 0.025 |
+| `drainPerSec` | 0–1.0 | 0.015 / 0.025 / 0.040 |
+| `timeMs` | 2000–60000 | 12000 / 10000 / 8000 |
+| `keys` | string (e.g. `"ADK"`) or array (e.g. `{'A','D','K'}`) | nil — single random key |
+
+When `keys` is supplied each key gets a `1/N` slice of `timeMs` and must reach 100% within its slice.
+
+## Minesweeper
+
+Classic Minesweeper.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `cols` | 3–16 | 6 / 8 / 10 |
+| `rows` | 3–16 | 6 / 8 / 10 |
+| `mines` | 1 to (cols × rows − 9) | 6 / 10 / 18 |
+| `timeMs` | 10000–600000 | 120000 |
+
+## Rhythm
+
+4-lane note-hit. Hit % over the chart length must clear the threshold.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `lengthMs` | 5000–120000 | 25000 / 30000 / 35000 |
+| `threshold` | 0.10–1.00 | 0.60 / 0.70 / 0.80 |
+| `notesPerSec` | 0.5–8.0 | 0.7 / 1.0 / 1.5 |
+| `chordChance` | 0.0–0.5 | 0.05 / 0.08 / 0.12 |
+
+## LightsOut
+
+Click a cell to toggle it and its 4-neighbours. Goal: turn ALL lights ON. Generated solvable.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `size` | 3–8 | 3 / 5 / 5 |
+| `toggles` | 1–40 | 4 / 12 / 18 |
+| `timeMs` | 10000–300000 | 60000 / 60000 / 45000 |
+
+## Towers
+
+Block slides side-to-side; press SPACE to drop. Overhang is sliced. Reach `targetStacks` to win. Speed escalates +5% per block.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `targetStacks` | 2–40 | 8 / 12 / 16 |
+| `baseSpeedPxSec` | 60–900 | 220 / 320 / 440 |
+| `perfectPx` | 1–20 | 6 / 5 / 4 |
+
+## Safe
+
+Safecracker dial. A/D rotate, W locks. The dial plays a tumbler-fall sound at the right tick — stop on it, lock, then reverse for the next pin.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `variant` | `terminal` \| `bare` | `terminal` |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `pinCount` | 1–8 | 2 / 3 / 4 |
+| `toleranceTicks` | 0–10 | 1 |
+| `ticks` | 20–360 | 100 |
+| `spinSpeed` | 0.5–120 ticks/sec | 2.5 / 3.5 / 5 |
+| `code` | string | nil — no reward sticky |
+| `skipToCode` | `boolean` | `false` |
+
+When `code` is supplied and the safe is cracked, a sticky-note overlay shows the code and waits for the player to dismiss it before the export resolves.
+
+## Frequency (solo-only on this page)
+
+A two-player tuning game. The "viewer" reads a target waveform, the "tuner" adjusts probe frequency and amplitude until both axes are within tolerance, then both players hold for `holdSeconds` to win. The server is authoritative.
+
+For the **two-player setup**, see the dedicated [Frequency multiplayer](/cc_minigames/advanced/frequency-multiplayer) page. The export below covers solo debug usage and the per-client invocation that the server triggers behind the scenes.
+
+| Option | Range | Default (easy / medium / hard) |
+| --- | --- | --- |
+| `difficulty` | `easy` \| `medium` \| `hard` | `medium` |
+| `role` | `viewer` \| `tuner` \| `both` | `viewer` |
+| `variant` | `bare` (always for tuner / `both`); `bare` \| `screen-4x3` (viewer only) | `bare` |
+| `tolerance` | 1–40 (% of axis range) | 12 / 8 / 5 |
+| `holdSeconds` | 0.5–15 | 2.5 / 3.0 / 3.5 |
+| `drift` | 0–5 | 0 / 0.6 / 1.4 |
+| `timeLimit` | 0–600 seconds | 90 / 75 / 60 |
+| `solo` | `boolean` | `false` |
+| `sessionToken` | string | nil — required for networked sessions |
+| `code` | string ≤ 32 chars (printable ASCII) | nil |
+| `skipToCode` | `boolean` | `false` (only honored when `code` is set) |
+
+```lua
+-- Solo debug: render both halves locally, no server session
+exports.cc_minigames:Frequency({ solo = true, role = 'both', difficulty = 'medium' })
+```

@@ -1,0 +1,124 @@
+---
+title: "Frequency multiplayer"
+description: "Server-authoritative two-player tuning game."
+---
+
+The **Frequency** minigame is the only one in `cc_minigames` that requires the server. Two players collaborate: a **viewer** sees a target waveform, and a **tuner** adjusts probe frequency and amplitude until both axes are within tolerance, then both hold for `holdSeconds` to win. The server holds the canonical state and ticks the hold-timer at 100 ms — neither client can spoof a "locked" frame to fake a win.
+
+## Server export
+
+```lua
+local p = exports.cc_minigames:FrequencyStart(viewerSrc, tunerSrc, {
+    difficulty   = 'medium',
+    -- Per-tier defaults: tolerance, holdSeconds, drift, timeLimit.
+    -- All of these can be overridden:
+    tolerance    = 8,    -- 1–40, percent of axis range
+    holdSeconds  = 3.0,  -- 0.5–15
+    drift        = 0.6,  -- 0–5; how aggressively the target drifts mid-game
+    timeLimit    = 75,   -- 0–600 seconds; 0 = none
+    viewerVariant = 'screen-4x3', -- defaults to 'screen-4x3'; pass 'bare' for a non-DUI viewer
+    viewerEmbed   = false, -- set true if the viewer is rendered into a DUI/iframe by another resource
+})
+
+p:next(function(success)
+    if success then
+        -- both players cleared the puzzle
+    end
+end)
+```
+
+`FrequencyStart` returns a `promise` that resolves with the success boolean. From inside a server thread you can also `Citizen.Await(p)` to block on it.
+
+## Per-difficulty defaults
+
+| Difficulty | tolerance | holdSeconds | drift | timeLimit |
+| --- | --- | --- | --- | --- |
+| `easy` | 12% | 2.5 | 0 | 90 s |
+| `medium` | 8% | 3.0 | 0.6 | 75 s |
+| `hard` | 5% | 3.5 | 1.4 | 60 s |
+
+## Server export reference
+
+| Export | Returns | Description |
+| --- | --- | --- |
+| `FrequencyStart(viewerSrc, tunerSrc, opts)` | `promise` | Start a session. Both clients receive a join event and run the local minigame. |
+| `FrequencyGetToken(src)` | `string \| nil` | Look up the active session token for a given player source. Useful for cross-resource code that needs to address a running session. |
+
+## Cross-resource event
+
+When a session ends, the server fires:
+
+```lua
+TriggerEvent('cc_minigames:sv:frequency:finished', token, success, viewerSrc, tunerSrc)
+```
+
+This is a regular Lua event (server-local, not net), so any other server resource can `AddEventHandler` it and react when a frequency session resolves — useful when the server resource that started the session was in a different lifecycle than the one that needs to react to the result.
+
+## What happens on the wire
+
+<Steps>
+  <Step title="Server picks targets, seeds probes off-target">
+    `targetFreq` and `targetAmp` are randomized within their bounds. `probeFreq` and `probeAmp` are re-rolled until they're at least 25% off-target on each axis, so the game never spawns already-locked.
+  </Step>
+  <Step title="Server fans out the join event">
+    Both clients receive `cc_minigames:cl:frequency:join` carrying the token and their assigned role. Each client runs the local `Frequency` minigame export.
+  </Step>
+  <Step title="Tuner inputs go to the server">
+    A/D/W/S on the tuner client fire `cc_minigames:sv:frequency:input` with `{ axis, dir }`. Server clamps and applies the step. Viewer inputs are silently ignored.
+  </Step>
+  <Step title="Server ticks at 100 ms">
+    On each tick: drift advances the target on harder tiers, the timer counts down, and the hold-meter accumulates while both axes are within tolerance and decays 1.5× faster when out. State is broadcast to both clients.
+  </Step>
+  <Step title="Hold target met → success">
+    When `holdMs` reaches `holdSeconds × 1000`, the server fires `cc_minigames:cl:frequency:finish` to both clients with `success = true`, resolves the promise, and emits `cc_minigames:sv:frequency:finished` for cross-resource listeners.
+  </Step>
+  <Step title="Anything else → fail">
+    Time limit hit, either player escapes the local minigame, or either player drops — the session resolves `false` with the same fan-out.
+  </Step>
+</Steps>
+
+## Variants
+
+| Side | Variant options | Notes |
+| --- | --- | --- |
+| Viewer | `screen-4x3` (default), `bare` | `screen-4x3` is the layout intended for a DUI prop (in-world CRT). `bare` is for a player-facing screen where you just want the waveform card. |
+| Tuner | `bare` (forced) | The tuner is dial + readout — terminal chrome would fight the panel. |
+
+## Embedding the viewer in a DUI
+
+A common heist setup: the viewer's waveform is on a wall-mounted CRT prop, the tuner is a player at a console nearby. Use the [DUI session helper](/cc_minigames/advanced/dui-sessions) for the viewer side and pass `viewerEmbed = true` so the server doesn't try to push a fullscreen NUI to that player.
+
+```lua
+-- Server-side
+local token = -- (reserve a token before starting; or use FrequencyGetToken after)
+exports.cc_minigames:FrequencyStart(viewerSrc, tunerSrc, {
+    difficulty    = 'medium',
+    viewerEmbed   = true,    -- viewer's NUI is rendered by another resource via DUI
+})
+```
+
+```lua
+-- Client (viewer side, in the DUI-hosting resource)
+local controller = exports.cc_minigames:CreateDuiSession({
+    minigame    = 'frequency',
+    variant     = 'screen-4x3',
+    opts        = { role = 'viewer', sessionToken = token, difficulty = 'medium' },
+    sendMessage = function(payload) myDui:sendMessage(payload) end,
+    onResult    = function(success) end,
+})
+myDui:sendMessage(controller.startMessage)
+```
+
+The server's per-tick state events are forwarded into the DUI automatically because the DUI session registered its `sessionToken`.
+
+## Test it solo
+
+For visual debugging without a partner the local `/minigame` command bypasses the server session entirely and renders both halves in one card:
+
+```
+/minigame frequency bare medium both
+/minigame frequency bare medium both ABCD-1234           # display this code on success
+/minigame frequency bare medium both ABCD-1234 skip      # skip puzzle, show code
+```
+
+This drives a fake state loop in the NUI — useful for tuning visuals or layout without two clients.

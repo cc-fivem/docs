@@ -1,0 +1,88 @@
+---
+title: "Schematic Control Panel"
+description: "A persistent NUI panel that renders a heist schematic with interactive doors and cameras."
+---
+
+The Control Panel isn't a minigame — it's a long-lived NUI surface for showing a heist schematic with clickable doors and cameras. It lives in `cc_minigames` because it shares the same NUI shell, design tokens, and SFX as the minigames. The caller drives it by passing callbacks and updating state with the `ControlSet*` exports.
+
+<Note>
+  The panel and a minigame can not be open at the same time on a given client — both compete for NUI focus. Use [`IsActive()`](/cc_minigames/usage#generic-api) / `ControlIsOpen()` to coordinate.
+</Note>
+
+## Open the panel
+
+```lua
+exports.cc_minigames:ControlOpen({
+    schematic = 'paleto_bank',                 -- string (loads schematics/<name>.json) or inline table
+    title     = 'Paleto Bank',                 -- header title
+    subtitle  = 'Security Control',            -- header subtitle
+    doors     = { front_door = 'locked' },     -- initial door states
+    cameras   = { lobby = 'active' },          -- initial camera states
+
+    onDoorClick = function(id, state)
+        -- player clicked a door icon. Update server-side, then call ControlSetDoor.
+    end,
+
+    onCameraClick = function(id, state)
+        -- cycle / hack / disable a camera as you see fit.
+    end,
+
+    onPasscodeVerify = function(id, code)
+        -- return true to unlock a code-locked door, false to shake-and-clear the keypad.
+        return code == '4815'
+    end,
+
+    onDoorRelocked = function(id)
+        -- the panel demoted a code-unlocked door back to 'locked' after the timeout.
+    end,
+
+    onClose = function()
+        -- cleanup
+    end,
+})
+```
+
+`schematic` accepts either an inline table or a string. When a string is passed, the resource looks up `schematics/<name>.json` inside `cc_minigames` (`schematics/paleto_bank.json` ships out of the box).
+
+## Update state from the callbacks
+
+The panel doesn't change state on its own — clicks fire your handlers, your handlers decide what to do, then you push the new state with these exports:
+
+| Export | Description |
+| --- | --- |
+| `ControlSetDoor(id, state)` | Replace one door's state. Accepts a string (`'locked'`, `'unlocked'`, …) or a table for richer states (e.g. `{ state = 'unlocked', expiresIn = 5000 }`). |
+| `ControlSetCamera(id, state)` | Replace one camera's state. |
+| `ControlClose()` | Close the panel. Fires `onClose`. |
+| `ControlIsOpen()` | Returns whether the panel is currently rendered. |
+
+### Door state shape
+
+| Form | Example | Effect |
+| --- | --- | --- |
+| String | `'locked'`, `'unlocked'` | Plain state. |
+| Table | `{ state = 'unlocked', expiresIn = 5000 }` | Time-limited unlock. The UI computes `expiresAt` against its own clock, and demotes the door back to plain `'locked'` when the window expires. Fires `onDoorRelocked` so you can persist the demotion. |
+
+## Camera state cycling
+
+The shipped test command uses a three-state cycle (`active → disabled → hacked → active`) but nothing about the panel forces that — the strings are just labels you push. Use whatever vocabulary fits your heist resource.
+
+## Test command
+
+```
+/control [schematic]    # default: paleto_bank
+/control close          # close the panel
+```
+
+`/control paleto_bank` opens the bundled `schematics/paleto_bank.json` and wires up a stub handler that:
+
+- Unlocks any clicked door for 5 seconds, then re-locks it.
+- Cycles cameras `active → disabled → hacked → active` on click.
+- Logs every state transition to the F8 console.
+
+This is exactly the loop a heist resource will write — it's a useful blueprint when you're building the real one.
+
+## Cross-resource gotcha
+
+<Warning>
+  Don't pass closure callbacks via the `:Function()` colon-export syntax across resources unless you know what you're doing. The Control panel uses `pcall` and a callable check that handles both plain functions and fxv2-wrapped callables, but if you see `attempt to call a table value` in your console it means the callback didn't survive the export boundary. Use the standard `exports.cc_minigames:ControlOpen({...})` form.
+</Warning>

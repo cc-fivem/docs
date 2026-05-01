@@ -1,0 +1,107 @@
+---
+title: "DUI sessions"
+description: "Embed any cc_minigames game inside a DUI surface so it can be projected onto an in-world prop texture."
+---
+
+A DUI session lets you host a `cc_minigames` minigame inside a DUI render target you create yourself — typically so the game UI can be projected onto a wall-mounted CRT, monitor, or other prop via `AddReplaceTexture`.
+
+The caller still owns the DUI lifecycle. `cc_minigames` only hands you a correctly-shaped start payload, a cancel payload, and a result callback channel.
+
+## When to use this
+
+| Use case | Use this |
+| --- | --- |
+| Player presses a key, a minigame opens fullscreen, blocks until done. | The plain export. **Not this.** |
+| Minigame UI must appear on an in-world prop's texture. | This. |
+| The minigame is just one panel inside another resource's NUI dashboard (iframe-like). | The plain export with `embed = true`, **not this**. The `embed` option does the same focus-ownership handover without DUI plumbing. |
+
+## API
+
+```lua
+local controller = exports.cc_minigames:CreateDuiSession({
+    minigame = 'frequency',     -- any minigame name
+    variant  = 'screen-4x3',    -- whichever variant your prop expects
+    opts     = {
+        difficulty = 'medium',
+        role         = 'viewer',
+        sessionToken = token,    -- required for networked Frequency
+    },
+    onResult = function(success)
+        -- called exactly once, with a boolean
+    end,
+    sendMessage = function(payload)
+        -- optional. If provided, server-pushed Frequency state/finish events
+        -- matching opts.sessionToken are forwarded here.
+        -- Bind your DUI's :sendMessage in.
+        myDui:sendMessage(payload)
+    end,
+})
+
+-- controller is:
+-- {
+--   id            = 'dui_<gametimer>_<n>',
+--   startMessage  = { action='start',  data={...} },
+--   cancelMessage = { action='cancel', data={ id = ... } },
+--   dispose       = function()  -- removes the session from the registry
+-- }
+```
+
+## Lifecycle
+
+<Steps>
+  <Step title="Create your DUI surface">
+    Standard CitizenFX DUI flow: create the DUI pointing at `https://cc_minigames/web/index.html`, attach its render target to the in-world prop with `AddReplaceTexture`.
+  </Step>
+  <Step title="Open a session">
+    Call `CreateDuiSession` with the minigame, variant, opts, and `onResult` callback.
+
+    The controller you get back exposes the **start** message that needs to be pushed into the DUI once it's loaded.
+  </Step>
+  <Step title="Send the start message into the DUI">
+    ```lua
+    myDui:sendMessage(controller.startMessage)
+    ```
+
+    The NUI page running inside your DUI sees the same `start` action it sees on a normal session and renders the requested minigame inline (because the controller forces `opts.embed = true` so the page doesn't try to grab focus).
+  </Step>
+  <Step title="Receive the result">
+    When the player finishes (or cancels), `onResult(success)` fires once. You're responsible for tearing down the DUI on your side.
+  </Step>
+  <Step title="Cancel from your side">
+    If you need to abort externally — door closed, contract failed, prop destroyed — push the cancel message:
+
+    ```lua
+    myDui:sendMessage(controller.cancelMessage)
+    ```
+
+    The page inside the DUI will resolve the session as `false`, which routes back through `onResult(false)`. Then call `controller.dispose()` to drop the registration.
+  </Step>
+</Steps>
+
+## How result routing works
+
+The DUI's NUI page reaches the resource via the same `RegisterNUICallback` channel as the fullscreen NUI does — but the `data.id` it sends back is the DUI session id you got from `CreateDuiSession`, **not** the player's active-session id. `cc_minigames` checks the id against its registry of DUI sessions first. If it matches, your `onResult` fires and the player's regular `activeSession` is left alone. If it doesn't match, the call falls through to the normal path.
+
+This is why two DUI minigames and one fullscreen minigame can theoretically coexist on a single client — they each have their own id namespace.
+
+## Frequency forwarding
+
+For the [multiplayer Frequency](/cc_minigames/advanced/frequency-multiplayer) game, the server pushes `state` and `finish` events to specific player sources, keyed on the `sessionToken`. If your DUI is showing the viewer half (the most common DUI scenario — a CRT prop on the heist wall), pass `sendMessage` to `CreateDuiSession` and `cc_minigames` will forward those server events into your DUI as well, so the viewer's waveform stays live without any extra wiring.
+
+```lua
+exports.cc_minigames:CreateDuiSession({
+    minigame    = 'frequency',
+    variant     = 'screen-4x3',
+    opts        = { role = 'viewer', sessionToken = token, difficulty = 'medium' },
+    sendMessage = function(payload) myDui:sendMessage(payload) end,
+    onResult    = function(success)
+        -- success is the same bool the server promise resolves with
+    end,
+})
+```
+
+## Notes
+
+- The controller's `dispose()` is **idempotent** — calling it twice is fine.
+- You can have multiple DUI sessions live at once. Each gets its own id.
+- A normal fullscreen session opened via `:Pattern{}`, `:Crack{}`, etc. is separate from DUI sessions and is unaffected by them.

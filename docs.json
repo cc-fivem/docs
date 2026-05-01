@@ -70,6 +70,33 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "cc_minigames",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "cc_minigames/index",
+              "cc_minigames/installation",
+              "cc_minigames/usage"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "cc_minigames/minigames"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "cc_minigames/advanced/control-panel",
+              "cc_minigames/advanced/dui-sessions",
+              "cc_minigames/advanced/frequency-multiplayer"
+            ]
+          }
+        ]
       }
     ],
     "global": {

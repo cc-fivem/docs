@@ -1,0 +1,47 @@
+---
+title: "Installation"
+description: "Drop the resource in, ensure it after ox_lib, you're done."
+---
+
+## Requirements
+
+- FiveM server with `lua54 'yes'` support (the resource declares it).
+- `ox_lib` ensured before `cc_minigames`.
+
+## Steps
+
+<Steps>
+  <Step title="Place the resource">
+    Copy the `cc_minigames` folder into a resources directory the server already loads — typically `resources/[cc]/cc_minigames/`.
+  </Step>
+  <Step title="Ensure after ox_lib">
+    In `server.cfg`:
+
+    ```
+    ensure ox_lib
+    ensure cc_minigames
+    ```
+  </Step>
+  <Step title="Restart or start the resource">
+    Either restart the server or run `ensure cc_minigames` in the live console.
+  </Step>
+  <Step title="Verify in-game">
+    Join the server and run `/minigame help` in the chat console. You should see the full list of supported games and their argument formats.
+  </Step>
+</Steps>
+
+## Test commands
+
+The resource ships two built-in test commands so you can preview every feature without writing calling code:
+
+| Command | What it does |
+| --- | --- |
+| `/minigame <name> [variant] [difficulty] [args...]` | Runs any minigame locally and prints the result to the console. |
+| `/minigame stop` | Cancels the active minigame (resolves it as `false`). |
+| `/minigame help` | Prints the full supported argument list for every game. |
+| `/control [schematic]` | Opens the schematic [Control Panel](/cc_minigames/advanced/control-panel) in test mode. Defaults to `paleto_bank`. |
+| `/control close` | Closes the control panel. |
+
+<Tip>
+The `frequency` minigame has a solo debug mode wired into `/minigame frequency`. It bypasses the server session and draws both viewer and tuner halves side-by-side in one card. See [Frequency multiplayer](/cc_minigames/advanced/frequency-multiplayer) for the real two-player setup.
+</Tip>

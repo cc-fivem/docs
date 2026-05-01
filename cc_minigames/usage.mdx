@@ -1,0 +1,115 @@
+---
+title: "Usage"
+description: "How to call minigames from your own resource — shape, semantics, and gotchas."
+---
+
+## The export shape
+
+Every minigame is exposed as a single export on `cc_minigames`. Each one takes an options table and returns a boolean.
+
+```lua
+local ok = exports.cc_minigames:Pattern({
+    variant    = 'terminal',
+    difficulty = 'hard',
+    rounds     = 6,
+    gridSize   = 5,
+})
+
+if ok then
+    -- player passed; grant the thing server-side
+    TriggerServerEvent('myheist:unlockVault')
+else
+    -- player failed or cancelled
+end
+```
+
+Every option is optional. Omit anything and the difficulty preset fills it in.
+
+## Generic dispatch
+
+For data-driven heists where the minigame is picked at runtime:
+
+```lua
+local ok = exports.cc_minigames:Start('crack', { difficulty = 'hard' })
+```
+
+`Start` accepts the same name strings as the `/minigame` command — see the [reference table](/cc_minigames/minigames#reference-table) for the full list.
+
+## Blocking semantics
+
+<Warning>
+  Exports yield the calling coroutine until the player finishes or cancels. **Always call them from inside `CreateThread` or another already-yielding context.** Calling at the top level of a script body will error.
+</Warning>
+
+```lua
+-- Wrong: top-level body, will error
+local ok = exports.cc_minigames:Pattern({}) -- ❌
+
+-- Right: inside a thread
+CreateThread(function()
+    local ok = exports.cc_minigames:Pattern({}) -- ✅
+end)
+```
+
+## Concurrency
+
+Only one minigame can run per client at a time.
+
+- Starting a second while one is active **returns `false` without showing UI**.
+- On resource stop mid-game, any outstanding promise resolves `false` and NUI focus is released so the player is never stuck.
+
+```lua
+-- Bail early if a game is already up
+if exports.cc_minigames:IsActive() then return end
+
+-- Force-cancel the active session (resolves it as false to whoever is awaiting)
+exports.cc_minigames:Stop()
+```
+
+## Player input
+
+- **Escape** cancels any running minigame and returns `false`.
+- The resource owns NUI focus while a game is up. It is restored automatically on finish, cancel, or resource stop.
+- Every direct player input (clicks, keypresses) plays a click SFX. Boot/success/fail SFX play automatically.
+
+## Variants
+
+Each game declares which visual variants make sense for it:
+
+| Variant | What it looks like | Used by |
+| --- | --- | --- |
+| `terminal` | Full-card hacking-terminal chrome with a live log stream. | Default for desk-style games (Pattern, Crack, Sequence, …). |
+| `bare` | Compact card with no chrome. Good when the game art is the point. | Available on most terminal-style games. |
+| `strip` | Low-screen horizontal band; world stays visible. | Locked variant for Lockpick, Fishing, Flick, Cut, Balance, Masher. |
+| `screen-4x3` | 4:3 layout for projecting onto a CRT prop via DUI. | Frequency viewer only. |
+
+See per-game restrictions in the [reference table](/cc_minigames/minigames#reference-table).
+
+## Difficulty
+
+Every game accepts `difficulty = 'easy' | 'medium' | 'hard'` (default `medium`). Difficulty drives sane defaults for every other knob — you only need to override individual options when you want a tier-off-tier feel ("hard, but with more attempts than the preset").
+
+The one exception is **Fishing**, which uses rarity tiers (`common` → `legendary`) instead of difficulty.
+
+## Generic options that work everywhere
+
+These two options are not minigame-specific; they're handled by the shell on every call.
+
+| Option | Type | Effect |
+| --- | --- | --- |
+| `target` | `string` | Override the terminal-variant target string shown in the chrome. Sanitized to alphanumerics, `-`, `_`. |
+| `embed` | `boolean` | Render inline rather than as a fullscreen overlay; do not touch NUI focus. Used by [DUI sessions](/cc_minigames/advanced/dui-sessions) and by callers that already own the NUI focus (e.g. an iframe-style dashboard). |
+
+## Generic API
+
+| Export | Returns | Description |
+| --- | --- | --- |
+| `:Start(name, opts)` | `boolean` | Run any minigame by name. |
+| `:IsActive()` | `boolean` | Whether a minigame (or [Control Panel](/cc_minigames/advanced/control-panel)) is currently up. |
+| `:Stop()` | — | Force-cancel the active minigame. The pending promise resolves `false`. |
+| `:CreateDuiSession(params)` | controller table | Build a DUI-hosted session. See [DUI sessions](/cc_minigames/advanced/dui-sessions). |
+| `:ControlOpen(opts)` | session id | Open the schematic [Control Panel](/cc_minigames/advanced/control-panel). |
+| `:ControlSetDoor(id, state)` | `boolean` | Update a door state in the open panel. |
+| `:ControlSetCamera(id, state)` | `boolean` | Update a camera state in the open panel. |
+| `:ControlClose()` | `boolean` | Close the panel. |
+| `:ControlIsOpen()` | `boolean` | Whether the panel is currently open. |

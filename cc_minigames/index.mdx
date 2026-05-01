@@ -1,0 +1,53 @@
+---
+title: "cc_minigames"
+description: "A library of 31 client-side minigames for FiveM, designed for heist and mission gating."
+---
+
+`cc_minigames` is a FiveM resource that ships a curated library of interactive minigames. Each game returns a single boolean (`true` = passed, `false` = failed or cancelled), so calling resources can use them as gates for whatever they want to gate — vault cracking, hotwiring, hacking, fishing, the things people put minigames in front of.
+
+## At a glance
+
+<Columns cols={2}>
+  <Card title="Client-only by default" icon="user">
+    Games run entirely in the player's NUI. No net events, no server state, no trust assumptions on the result — the *caller* decides what a `true` is worth.
+  </Card>
+  <Card title="Blocking exports" icon="hourglass">
+    Each minigame export yields the calling coroutine until the player finishes or cancels, then returns a boolean.
+  </Card>
+  <Card title="Difficulty tiers" icon="sliders">
+    Every game accepts `difficulty = 'easy' | 'medium' | 'hard'` with tuned defaults. Individual knobs can still be passed to override.
+  </Card>
+  <Card title="Three visual variants" icon="layout">
+    `terminal` (hacking-terminal chrome with live log), `bare` (clean card), `strip` (low-screen band). Each game declares which variants make thematic sense.
+  </Card>
+</Columns>
+
+## What's inside
+
+<Columns cols={2}>
+  <Card title="31 minigames" icon="puzzle-piece" href="/cc_minigames/minigames">
+    Pattern, Circuit, Sequence, Verbal, Memory, Crack, Sniffer, ColorCount, Drill, Lockpick, Fishing, Path, Untangle, Hotkey, Tracer, Aim, Cadence, Flick, Cut, Shell, Outrun, Balance, Masher, Minesweeper, Rhythm, LightsOut, Towers, Safe, plus the multiplayer Frequency game.
+  </Card>
+  <Card title="Schematic Control Panel" icon="map" href="/cc_minigames/advanced/control-panel">
+    A persistent NUI panel that renders heist schematics and lets the caller drive interactive doors and cameras — sharing the resource's NUI shell.
+  </Card>
+  <Card title="DUI session helper" icon="tv" href="/cc_minigames/advanced/dui-sessions">
+    Run any minigame inside a DUI surface so it can be projected onto an in-world prop texture (e.g. a wall-mounted CRT).
+  </Card>
+  <Card title="Two-player Frequency" icon="signal" href="/cc_minigames/advanced/frequency-multiplayer">
+    Server-authoritative collaborative game where one player reads a target waveform and another tunes a probe to match.
+  </Card>
+</Columns>
+
+## Quick example
+
+```lua
+CreateThread(function()
+    local ok = exports.cc_minigames:Pattern({ difficulty = 'hard', rounds = 6 })
+    if ok then
+        TriggerServerEvent('myheist:unlockVault')
+    end
+end)
+```
+
+Continue with [installation](/cc_minigames/installation) or jump straight to the [minigames reference](/cc_minigames/minigames).
