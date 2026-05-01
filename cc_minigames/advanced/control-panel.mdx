@@ -1,6 +1,7 @@
 ---
 title: "Schematic Control Panel"
 description: "A persistent NUI panel that renders a heist schematic with interactive doors and cameras."
+icon: 'sliders'
 ---
 
 The Control Panel isn't a minigame — it's a long-lived NUI surface for showing a heist schematic with clickable doors and cameras. It lives in `cc_minigames` because it shares the same NUI shell, design tokens, and SFX as the minigames. The caller drives it by passing callbacks and updating state with the `ControlSet*` exports.

@@ -1,6 +1,7 @@
 ---
 title: "Frequency multiplayer"
 description: "Server-authoritative two-player tuning game."
+icon: 'signal'
 ---
 
 The **Frequency** minigame is the only one in `cc_minigames` that requires the server. Two players collaborate: a **viewer** sees a target waveform, and a **tuner** adjusts probe frequency and amplitude until both axes are within tolerance, then both hold for `holdSeconds` to win. The server holds the canonical state and ticks the hold-timer at 100 ms — neither client can spoof a "locked" frame to fake a win.
