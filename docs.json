@@ -60,6 +60,19 @@
               "cc_minigames/advanced/dui-sessions",
               "cc_minigames/advanced/frequency-multiplayer"
             ]
+          },
+          {
+            "group": "Heist Contracts",
+            "pages": [
+              "cc_heistcontracts/index",
+              "cc_heistcontracts/installation",
+              "cc_heistcontracts/configuration",
+              "cc_heistcontracts/registering-contracts",
+              "cc_heistcontracts/dashboard",
+              "cc_heistcontracts/marketplace",
+              "cc_heistcontracts/training",
+              "cc_heistcontracts/admin"
+            ]
           }
         ]
       },

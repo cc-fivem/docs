@@ -1,0 +1,93 @@
+---
+title: "Marketplace"
+description: "VICE-priced items, server-rolled pickup locations, in-world claim flow."
+---
+
+The Marketplace tab on the dashboard is a VICE storefront for heist-prep items. The flow is **checkout → pickup banner → drive to the door → knock → items**, with a server-side time window in the middle.
+
+## Item catalog
+
+Defined in [`shared/marketplace_config.lua`](/cc_heistcontracts/configuration#shared-marketplace_config-lua-items-pickups). Categories of items, each with an `id` (must match your inventory item name), a display `name`, and a VICE `price`.
+
+The server strips the catalog of any non-serializable fields before sending it to the dashboard, so you can reference Lua-only values (functions, vectors) inside the config — they just won't reach the NUI.
+
+## Checkout flow
+
+<Steps>
+  <Step title="Player builds a cart">
+    Multiple items, each with a quantity. Total VICE cost is computed and shown live in the cart panel.
+  </Step>
+  <Step title="Click checkout">
+    Dashboard fires `marketplaceCheckout` → `cc_heistcontracts:marketplaceCheckout` net event with the cart array.
+  </Step>
+  <Step title="Server validates and debits">
+    Each item is looked up; an unknown id rejects the whole cart. Total is summed against the player's VICE balance. On success, VICE is debited atomically (one ledger entry: "Marketplace checkout").
+  </Step>
+  <Step title="Server rolls (or merges into) a pickup">
+    First active checkout for the player → uniformly random pickup location from `marketplace_config.locations`, with that location's `window` (seconds) deadline. Subsequent checkouts while a pickup is active **merge into the existing pickup** — items combine, deadline does not extend.
+  </Step>
+  <Step title="Pickup banner appears">
+    Server pushes a `pickup` action with `{ pickupId, location, expiresAt, total, items }`. Client spawns an [ox_target sphere zone](/cc_heistcontracts/dashboard#client--server-actions) at the door coords, label "Knock", radius from config.
+  </Step>
+  <Step title="Player drives there and knocks">
+    Interacting with the zone plays the door-knock animation (`timetable@jimmy@doorknock@`), then fires `cc_heistcontracts:marketplaceClaim` with the pickup id.
+  </Step>
+  <Step title="Server hands items over">
+    Validates ownership, expiry, and not-already-delivered. Calls `cc_lib.Inventory.AddItem` for each line. Pushes a `pickupCleared` action so the dashboard banner disappears, plus a success toast.
+  </Step>
+</Steps>
+
+## Pickup payload
+
+```jsonc
+{
+  "pickupId": "p_3",
+  "location": {
+    "name": "El Burro Heights",
+    "coords": { "x": 1128.21, "y": -2034.86, "z": 32.07 },
+    "radius": 0.6
+  },
+  "expiresAt": 1730000600,    // os.time() + window
+  "total": 5300,              // total VICE paid
+  "items": [
+    { "id": "c4",       "name": "C4",        "price": 2500, "qty": 1 },
+    { "id": "thermite", "name": "Thermite", "price": 1800, "qty": 1 },
+    { "id": "lockpick", "name": "Lockpick", "price": 250,  "qty": 4 }
+  ]
+}
+```
+
+The dashboard's "Set GPS" button on the pickup banner uses the client-side `pickupSetGps` callback — `SetNewWaypoint(coords.x, coords.y)` runs locally; nothing is round-tripped through the server.
+
+## Failure modes
+
+`Marketplace.Checkout` returns one of these error codes when it returns `false`:
+
+| Code | Cause |
+| --- | --- |
+| `empty_cart` | The cart array is empty or not a table. |
+| `unknown_item` | At least one cart line has an `id` not in any category. The third return is the offending id. |
+| `no_profile` | Server couldn't resolve the player's profile. |
+| `insufficient_vice` | Cart total exceeds the player's VICE balance. |
+| `no_locations` | The locations table is empty. Configuration error — fix `marketplace_config.lua`. |
+
+`Marketplace.Claim`:
+
+| Code | Cause |
+| --- | --- |
+| `unknown_pickup` | Pickup id was already cleared (delivered, expired, or never existed). |
+| `not_owner` | A different player tried to claim. |
+| `already_delivered` | Race condition — first claim already won. |
+| `expired` | Player ran out the time window. The pickup is dropped at the same time. |
+
+The dashboard surfaces these as `error` toasts with the literal error code in the message, so a player seeing `Pickup failed: expired` knows exactly what happened.
+
+## Auto-cleanup
+
+- A `SetTimeout(window * 1000)` per pickup drops it from the in-memory map when its window elapses.
+- A successful claim removes the pickup from the map immediately.
+- Pickups currently **don't survive a server restart** — they live only in `pendingPickups` in memory. If the server restarts mid-pickup, the player's VICE was already debited and the items are lost. Worth being aware of if you do rolling restarts.
+
+## Inventory dependency
+
+Item delivery calls `cc_lib.Inventory.AddItem(src, line.id, line.qty)`. If `cc_lib` doesn't have an `Inventory` module wired up to your core, the claim will fail with `Pickup failed: no inventory module`. The VICE was already debited at checkout — a manual refund or a re-roll of the pickup is the recovery, not a known automatic path.

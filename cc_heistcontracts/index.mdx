@@ -1,0 +1,98 @@
+---
+title: "Introduction"
+description: "A heist contract marketplace, dashboard, and progression system for FiveM."
+---
+
+`cc_heistcontracts` is the central hub other heist resources plug into. It owns:
+
+- The **player profile** (level, XP, VICE balance, contract slots, completion stats, alias).
+- The **dashboard NUI** (`F6` by default, or `/heist`) — where players see available contracts, manage slots, shop the marketplace, and practice in the training sandbox.
+- The **rotation** — every 20 minutes (configurable) it picks a fresh subset of all registered contracts and exposes them as "available for purchase".
+- The **slot economy** — players hold up to 3 (configurable) purchased contracts; starting one consumes the slot and invokes the registered contract's entry point.
+- A **VICE economy** with a server-authoritative ledger.
+- A **marketplace** for heist-prep items with timed pickup locations.
+- A **training sandbox** that gates [cc_minigames](/cc_minigames/index) games behind level + VICE unlocks.
+- A **crew (group) layer** wrapping `cc_lib.Groups`.
+
+## Mental model
+
+The single thing other resources actually need to do is register their heists:
+
+```lua
+RegisterContract({
+    id = 'fleeca_heist',
+    name = 'Fleeca Heist',
+    title = 'Fleeca Branch Heist',
+    description = 'Hit a Fleeca branch. Low risk, low reward.',
+    difficulty = 'easy',
+    levelRequired = 1,
+    price = 2500,
+    crewSize = { min = 2, max = 4 },
+    duration = 1200,
+    reward = { vice = 1500, cash = 12000, xp = 250 },
+    itemsRequired = { { id = 'lockpick', qty = 1 } },
+    locations = { { id = 'pinkcage', label = 'Pinkcage Branch' } },
+    objectives = { 'Hack the box', 'Crack the vault', 'Escape' },
+}, function(runtimeData)
+    -- runtimeData.contractId, .acquiredAt, .startedBy, plus anything
+    -- the dashboard threads through (group, location, etc.)
+end)
+```
+
+Once registered, the contract enters the rotation. Players see it in the dashboard, spend VICE to acquire it into a slot, then start it. When they start, your `entry_point` callback fires — that's where your heist resource takes over.
+
+## Capabilities at a glance
+
+<Columns cols={2}>
+  <Card title="Register contracts" icon="plug" href="/cc_heistcontracts/registering-contracts">
+    Two exports — `RegisterContract` and (legacy) `StartContract`. Your heist resource only needs the first.
+  </Card>
+  <Card title="Configure rotation, slots, XP" icon="sliders" href="/cc_heistcontracts/configuration">
+    Three config files: `shared/config.lua`, `shared/marketplace_config.lua`, `shared/training_config.lua`. All hot-editable; restart the resource to apply.
+  </Card>
+  <Card title="Dashboard NUI" icon="window" href="/cc_heistcontracts/dashboard">
+    F6 / `/heist`. Sync, alias gating, contracts, rotation, slots, ledger, training. React/Vite app served from `web/`.
+  </Card>
+  <Card title="Marketplace + pickups" icon="cart-shopping" href="/cc_heistcontracts/marketplace">
+    VICE checkout, server-rolled pickup locations with time windows, ox_target zone with a "Knock" interaction.
+  </Card>
+  <Card title="Training sandbox" icon="dumbbell" href="/cc_heistcontracts/training">
+    Practice cc_minigames games for free (no rewards, no penalty). Access fee + per-minigame unlocks behind level requirements.
+  </Card>
+  <Card title="Admin tools" icon="shield" href="/cc_heistcontracts/admin">
+    `/heist:grantxp` (ACE-gated), debug seed contracts, log lines.
+  </Card>
+</Columns>
+
+## Dependencies
+
+- [`ox_lib`](https://github.com/overextended/ox_lib)
+- [`oxmysql`](https://github.com/overextended/oxmysql)
+- `cc_lib` (Core, Groups, Inventory, Target wrappers)
+- [`cc_minigames`](/cc_minigames/index) — only required if you wire training entries to them (the default config does)
+
+## Where things live
+
+```
+cc_heistcontracts/
+├── client/main.lua              # NUI bridge, dashboard open/close, ox_target pickup zone
+├── server/
+│   ├── registry.lua             # contract definitions in memory
+│   ├── profile.lua              # heist_profiles CRUD + cache + level/XP curve + alias
+│   ├── rotation.lua             # rolls every config.rotation.intervalMs
+│   ├── purchase.lua             # buy / discard / start / transfer slot flow
+│   ├── marketplace.lua          # VICE checkout, pickup rolling
+│   ├── training.lua             # training unlocks
+│   ├── sync.lua                 # net event router; bootstrap/profile/rotation/crew payloads
+│   └── main.lua                 # public exports + admin commands + seed contracts
+├── shared/
+│   ├── config.lua               # currency, rotation, slots, invite expiry, openKey, XP curve
+│   ├── marketplace_config.lua   # categories/items + pickup locations
+│   └── training_config.lua      # access price + per-minigame unlock list
+├── sql/
+│   ├── 001_heist_profiles.sql
+│   ├── 002_alias.sql
+│   └── 003_training.sql
+├── ui/                          # React/Vite source (build outputs to web/)
+└── web/                         # built dashboard (index.html + assets/*)
+```

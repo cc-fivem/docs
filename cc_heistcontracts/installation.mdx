@@ -1,0 +1,84 @@
+---
+title: "Installation"
+description: "Drop the resource in, run three SQL migrations, ensure after the dependencies."
+---
+
+## Requirements
+
+- A FiveM server running [ox_lib](https://github.com/overextended/ox_lib) and [oxmysql](https://github.com/overextended/oxmysql).
+- A working `cc_lib` resource (provides Core, Groups, Inventory, and Target wrappers).
+- Optional: [cc_minigames](/cc_minigames/index) if you want the default training sandbox entries to work.
+
+## Steps
+
+<Steps>
+  <Step title="Place the resource">
+    Copy the `cc_heistcontracts` folder into a resources directory the server already loads. The repo ships under `resources/[cc]/cc_heistcontracts/`.
+  </Step>
+  <Step title="Run the SQL migrations">
+    The schema is split across three files. Run them **in order** against your MySQL database:
+
+    ```bash
+    mysql your_db < sql/001_heist_profiles.sql
+    mysql your_db < sql/002_alias.sql
+    mysql your_db < sql/003_training.sql
+    ```
+
+    Or paste them into your MySQL client. Each migration is idempotent on a fresh install (`CREATE TABLE IF NOT EXISTS`); the `ALTER TABLE` statements will fail if you re-run them on a database that already has those columns — that's expected.
+  </Step>
+  <Step title="Ensure after the dependencies">
+    Order matters in `server.cfg`:
+
+    ```
+    ensure oxmysql
+    ensure ox_lib
+    ensure cc_lib
+    ensure cc_minigames     # optional, only if training entries reference it
+    ensure cc_heistcontracts
+    ```
+  </Step>
+  <Step title="Verify in-game">
+    Join the server and press **F6** (or run `/heist`). The dashboard should open, prompt you to pick an alias, and then show two seed contracts — **Fleeca Branch Heist** and **Paleto Bank Score** — in the rotation. Those seeds live in `server/main.lua` and exist purely so you have something to look at on a fresh install.
+
+    <Tip>
+      To remove the seed contracts, delete the `seedTestContracts()` block in `server/main.lua` (or just leave them; once your real heist resources call `RegisterContract`, the rotation has plenty to draw from).
+    </Tip>
+  </Step>
+</Steps>
+
+## Database schema
+
+After all three migrations run, you should have one table:
+
+```sql
+heist_profiles (
+    citizenid           VARCHAR(50)  PRIMARY KEY,
+    alias               VARCHAR(32)  NULL UNIQUE,
+    level               INT          NOT NULL DEFAULT 1,
+    xp                  INT          NOT NULL DEFAULT 0,
+    vice_balance        INT          NOT NULL DEFAULT 0,
+    slots               TEXT         NULL,    -- JSON: array of { contractId, acquiredAt }
+    stats               TEXT         NULL,    -- JSON: completed/failed/byContract/...
+    cooldowns           TEXT         NULL,    -- JSON: reserved
+    ledger              TEXT         NULL,    -- JSON: last 50 VICE entries
+    training_unlocked   TINYINT(1)   NOT NULL DEFAULT 0,
+    training_minigames  TEXT         NULL,    -- JSON: { [minigame_id] = true }
+    created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                     ON UPDATE CURRENT_TIMESTAMP
+)
+```
+
+A new row is inserted on the first dashboard open for each `citizenid`. Profiles are cached in memory while the player is online and flushed every 30 seconds, on player drop, on resource stop, and on alias change.
+
+## Building the dashboard UI from source
+
+The `web/` folder ships pre-built. If you want to modify the React app:
+
+```bash
+cd ui
+npm install
+npm run build
+```
+
+The Vite config writes to `../web/` so the resource picks it up next ensure. Don't add `web/` to your `.gitignore` — it's the runtime artifact, not a build cache.

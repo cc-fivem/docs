@@ -1,0 +1,119 @@
+---
+title: "Dashboard"
+description: "What the F6 / /heist dashboard does, and how its pieces hang together."
+---
+
+The dashboard is the player's window into everything in `cc_heistcontracts`. It opens with **F6** (configurable via `config.openKey`) or the `/heist` command, and blocks until the player closes it — `SetNuiFocus(true, true)` is held while it's up.
+
+## How it boots
+
+<Steps>
+  <Step title="Player presses F6 / runs /heist">
+    `client/main.lua` flips `isOpen`, sends a `{ action = 'open' }` NUI message, takes NUI focus, and fires `cc_heistcontracts:requestSync` to the server.
+  </Step>
+  <Step title="Server replies with a bootstrap payload">
+    Includes currency config, slot count, the player's profile, the active rotation, the marketplace catalog, the player's crew (if any), and the training catalog. Sent on `cc_heistcontracts:sync` with action `bootstrap`.
+  </Step>
+  <Step title="Dashboard requests an alias on first open">
+    A new profile has `alias = NULL`. The dashboard refuses to render the rest of the UI until the player picks one. Server-side validation: 3–16 chars, must start with a letter, alphanumerics + underscore, case-insensitively unique across all profiles.
+  </Step>
+  <Step title="Dashboard renders">
+    Tabs: Contracts, Slots, Marketplace, Training, Crew, Ledger.
+  </Step>
+</Steps>
+
+The server adds `src` to a `viewers` set on bootstrap and removes it on close. **Rotation broadcasts only target current viewers** — a player whose dashboard is closed won't receive rotation updates until they reopen.
+
+## Sync protocol
+
+All server → client traffic flows over a single net event, `cc_heistcontracts:sync`, with a string `action` discriminator and a `data` payload.
+
+| Action | Payload | Meaning |
+| --- | --- | --- |
+| `bootstrap` | full state | Sent once when the dashboard opens. |
+| `profile` | profile only | Sent after any mutation (purchase, discard, transfer, training unlock, alias change, XP grant). |
+| `rotation` | rotation snapshot | Broadcast to viewers when the rotation re-rolls. |
+| `crew` | crew snapshot or `nil` | When the player joins, leaves, or their crew is disbanded. |
+| `transferInvite` | invite | A different player offered to transfer a contract slot. |
+| `crewInvite` | invite | A different player invited the player to a crew. |
+| `pickup` | pickup payload | Marketplace checkout completed; the dashboard switches to the pickup banner. |
+| `pickupCleared` | `{ pickupId }` | Pickup was claimed (or cleared by another path). |
+| `toast` | `{ kind, message }` | Inline toast shown by the dashboard. `kind` is `success`, `error`, or `info`. |
+
+### Profile payload shape
+
+What the dashboard receives on every `profile` push:
+
+```jsonc
+{
+  "citizenid": "ABC12345",
+  "alias": "ghost_42",
+  "characterName": "John Doe",
+  "level": 7,
+  "xp": 5400,
+  "xpInLevel": 1000,    // XP accumulated within the current level
+  "xpForLevel": 3600,   // XP span needed to finish the current level
+  "viceBalance": 12500,
+  "slots": [
+    { "contractId": "fleeca_heist", "acquiredAt": 1730000000 },
+    null,
+    null
+  ],
+  "stats": {
+    "completed": 14,
+    "failed": 2,
+    "totalViceEarned": 21000,
+    "byContract": { "fleeca_heist": { "completed": 10, "failed": 1 } },
+    "firstHeistAt": 1729800000,
+    "favoriteContract": "fleeca_heist"
+  },
+  "ledger": [ /* last 50 VICE entries */ ],
+  "trainingUnlocked": true,
+  "trainingMinigames": { "drill": true, "circuit": true }
+}
+```
+
+`xpInLevel` and `xpForLevel` are computed server-side via `Profile.LevelProgress`, so the dashboard's level ring stays in sync with the configured curve without duplicating the math client-side.
+
+## Client → server actions
+
+Every interactive control on the dashboard triggers a NUI callback that bridges to a net event. They're all in `client/main.lua`:
+
+| NUI callback | Server net event | Effect |
+| --- | --- | --- |
+| `close` | (none) | Clears NUI focus. |
+| `setAlias` | `cc_heistcontracts:setAlias` | First-open alias picker. Server validates and pushes a `profile` on success. |
+| `buyContract` | `cc_heistcontracts:buyContract` | Purchase a rotation contract into a slot. |
+| `startContract` | `cc_heistcontracts:startContract` | Start a slot — invokes the registered `entry_point`. Closes the dashboard automatically. |
+| `discardContract` | `cc_heistcontracts:discardContract` | Empty a slot. No refund. |
+| `transferContract` | `cc_heistcontracts:transferContract` | Send a contract slot to another player. The recipient gets a `transferInvite`. |
+| `transferResponse` | `cc_heistcontracts:transferResponse` | Accept/decline an inbound transfer. |
+| `marketplaceCheckout` | `cc_heistcontracts:marketplaceCheckout` | Pay VICE, get back a pickup payload. |
+| `pickupSetGps` | (none, client-only) | `SetNewWaypoint` to the active pickup's door. |
+| `crewInvite` / `crewInviteResponse` / `crewLeave` | matching `cc_heistcontracts:crew*` | Wraps `cc_lib.Groups`. |
+| `trainingUnlock` / `trainingUnlockMinigame` / `trainingStart` | matching `cc_heistcontracts:training*` | Training sandbox. |
+| `nearbyPlayers` | (client-only) | Returns server ids + names within 50 m. Used by the transfer / crew invite target picker. |
+
+## Alias rules
+
+```lua
+function validateAliasFormat(alias)
+    -- length 3..16, must match ^[A-Za-z][A-Za-z0-9_]+$
+end
+```
+
+| Error code | Meaning |
+| --- | --- |
+| `invalid` | Not a string, or other malformed input. |
+| `length` | Outside 3–16 chars. |
+| `charset` | Doesn't match the regex (must start with a letter; only letters, digits, underscore). |
+| `taken` | Case-insensitively in use by another profile. |
+| `no_profile` | Server couldn't load the player's profile (citizenid lookup failed). |
+| `db` | UPDATE didn't affect any rows (extremely rare, usually a transient DB error). |
+
+The error code is returned to the client via the `cc_heistcontracts:aliasResult` net event so the dashboard can show an inline message.
+
+## Cleanup
+
+- **Player drops** — server clears them from `viewers`, removes them from any crew (disbanding if leader), flushes their profile, evicts from cache.
+- **Resource stops** — client clears NUI focus; server flushes every cached profile.

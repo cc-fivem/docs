@@ -1,0 +1,112 @@
+---
+title: "Training sandbox"
+description: "Per-minigame practice mode, gated by a one-time access fee, level requirements, and per-game unlocks."
+---
+
+The Training tab on the dashboard lets players practice [cc_minigames](/cc_minigames/index) games (or any custom minigame you wire up) without rewards or penalties. It's a separate progression layer — completely independent of contracts, slots, and crew.
+
+## Three gates
+
+A given minigame card is reachable only when **all three** are satisfied:
+
+1. **Access** — the player paid the one-time `accessPrice` fee (default `5000` VICE). Until they pay, the entire Training tab is a single locked card showing the access price.
+2. **Level** — the entry's `levelRequired` (default `1`). The card is rendered as a red ring with the required level until the player reaches it; name and buttons stay hidden.
+3. **Unlock** — the entry's `price` (or `includedFree = true` for the freebies). After access is paid, free entries are auto-unlocked; paid entries need a separate unlock click.
+
+## What the default config looks like
+
+Out of the box (`shared/training_config.lua`):
+
+| Tier | Entries | Cost | Level |
+| --- | --- | --- | --- |
+| Free with access | Drill, Circuit, Sequence, Lockpick | 0 (included) | 1 |
+| Tier 1 | Crack, Pattern, Hotkey, Cadence, Memory, Aim, Path, Flick | 1500 each | 2–7 |
+| Tier 2 | Verbal, Balance, Masher, Sniffer, Tracer, Untangle, Cut, Outrun, Color Count | 2000 each | 8–14 |
+| Tier 3 | Shell | 3000 | 15 |
+
+Levels staircase from 2 → 15 with at most ~2 unlocks per level so progression always feels like there's something next on level-up.
+
+## Server-side flow
+
+<Steps>
+  <Step title="Player pays for access">
+    Dashboard → `cc_heistcontracts:trainingUnlock` → `Training.UnlockAccess(src)`. Validates VICE balance, debits, sets `training_unlocked = 1` in the profile.
+  </Step>
+  <Step title="Free entries auto-unlock at access time">
+    Each entry with `includedFree = true` (or `price = 0`) is added to `training_minigames` JSON the first time the player tries to start it (via `Training.UnlockMinigame`, called from the start path).
+  </Step>
+  <Step title="Paid unlock">
+    Click unlock on a card → `cc_heistcontracts:trainingUnlockMinigame` → `Training.UnlockMinigame(src, id)`. Re-validates access, level requirement, and balance. Debits the entry's `price`. Sets `training_minigames[id] = true`.
+  </Step>
+  <Step title="Practice run">
+    Click play → `cc_heistcontracts:trainingStart` → `Training.CanStart(src, id)` re-checks every gate. Server replies with `cc_heistcontracts:trainingStart` to the *client*, which dispatches the actual run.
+  </Step>
+</Steps>
+
+## Client-side dispatch
+
+When the server authorises a start, the client behaves differently per `source`:
+
+### `source = 'cc_minigames'`
+
+The minigame runs **inside the dashboard's iframe**, not by calling `cc_minigames`'s Lua exports. The dashboard relays `start` and `result` messages over `postMessage`. This means:
+
+- The dashboard stays open during the practice run.
+- NUI focus stays with the dashboard the whole time.
+- Cancellation works via the dashboard's `embedCancel` postMessage path — the iframe sends ESC into the embedded game; no Lua action is needed, and `client/main.lua` only acknowledges the `trainingCancel` callback.
+
+This is intentional: practice mode is a UI experience, not a gameplay one. The player browses, picks a game, plays, and comes back to the menu without ever leaving the dashboard.
+
+### `source = 'custom'`
+
+The dashboard closes, then your `invoke` function runs in a `CreateThread` on the client:
+
+```lua
+{
+    id     = 'my_custom',
+    label  = 'My Custom Game',
+    source = 'custom',
+    price  = 3000,
+    invoke = function()
+        return exports['my_resource']:Run({ difficulty = 'medium' })
+    end,
+}
+```
+
+- `invoke` is called inside a `pcall`. Throwing is treated as failure.
+- Return value `true` = pass, anything else = fail.
+- The result is sent to the dashboard NUI as a `trainingFinished` event so the dashboard can show pass/fail feedback when the player reopens it.
+- The dashboard does **not** auto-reopen after a custom run finishes. The player has to press F6 / `/heist` again.
+
+## Failure modes
+
+`Training.UnlockAccess` errors:
+
+| Code | Cause |
+| --- | --- |
+| `already` | Player already has access. |
+| `funds` | Insufficient VICE. |
+| `no_profile` | Couldn't resolve the player's profile. |
+
+`Training.UnlockMinigame` errors:
+
+| Code | Cause |
+| --- | --- |
+| `no_profile` | Couldn't resolve. |
+| `access_locked` | Player hasn't paid the access fee yet. |
+| `invalid` | `id` doesn't appear in `config.byId`. |
+| `level` | Player's level is below `levelRequired`. |
+| `already` | Already unlocked. |
+| `funds` | Insufficient VICE for the entry's price. |
+
+All errors are echoed to the dashboard via the `cc_heistcontracts:trainingResult` net event with the `kind` tag (`access` or `minigame`) and the `id` (for minigame errors) so the UI can surface them at the right card.
+
+## Adding a new training entry
+
+1. Edit `shared/training_config.lua`. Append to `config.minigames`. Pick a stable `id` — don't reuse it for anything else, and don't rename it after release (players will lose unlocks because the JSON column references the id).
+2. Decide `source`. If it's already an export on `cc_minigames`, use `source = 'cc_minigames', minigame = '<ExportName>'`. If it's anything else, use `source = 'custom'` with an `invoke` function.
+3. Set `price`. `0` paired with `includedFree = true` makes it free at access-purchase time.
+4. Set `levelRequired` (default `1`).
+5. Restart `cc_heistcontracts`. The `config.byId` index rebuilds on require.
+
+The dashboard picks up the new entry automatically on the next bootstrap — no UI rebuild needed (the entry is rendered from server-supplied config).

@@ -1,0 +1,114 @@
+---
+title: "Admin commands"
+description: "Console + ACE-gated commands for granting XP, testing contracts, and seeding data."
+---
+
+`cc_heistcontracts` ships three console commands. Two are debug-only (un-restricted) and one is ACE-gated.
+
+## `/heist:grantxp <alias> <amount>`
+
+Grant XP to a profile by alias. Handles level-ups and pushes a fresh profile sync to the recipient if they're online.
+
+```
+/heist:grantxp ghost_42 5000
+```
+
+| | |
+| --- | --- |
+| **Restricted** | Yes — `restricted = true` on the registration. |
+| **Allowed callers** | Console (source 0), or in-game admins with the `command.heist:grantxp` ACE permission, or the `admin` ace. |
+| **Online recipient** | Mutates the cached profile, marks it dirty (next 30s flush persists it), and immediately calls `_G.HeistSync.SendProfile(src)` so the dashboard updates without waiting for the next sync request. |
+| **Offline recipient** | Resolves alias → `citizenid` via a single `SELECT`, computes the new level/XP, and updates the row directly. Doesn't pollute the in-memory cache (no owner src). |
+
+### ACE setup
+
+Either grant the dedicated permission:
+
+```
+add_ace group.admin command.heist:grantxp allow
+```
+
+Or use the catch-all `admin` ace. Built-in superadmins are usually in `group.admin` already.
+
+### Output
+
+```
+[heist:grantxp] ghost_42 +5000 XP → level 8, xp 12450 (leveled up from 7)
+```
+
+If the alias doesn't exist:
+
+```
+[heist:grantxp] failed: not_found
+```
+
+Other failure codes: `invalid_amount` (zero/negative), `db` (UPDATE didn't affect any rows).
+
+## `/heist:test` and `/heist:test2`
+
+Both are **un-restricted** dev commands that exist to exercise the legacy `StartContract` path against the seed contracts. They:
+
+1. Create a `cc_lib.Groups` group named `'test'` with the caller as leader.
+2. Optionally add a second player as a member: `/heist:test 5` adds source 5 to the group.
+3. Call `StartContract('Paleto Heist', { group = 'test', location = { id = 'pinkcage' } })` (`/heist:test`) or `StartContract('Fleeca Heist', ...)` (`/heist:test2`).
+
+The contract names hard-coded into the commands match the seed registrations in `server/main.lua`. If you remove the seeds, both commands will print `unknown contract` and do nothing.
+
+<Warning>
+  These commands are not ACE-restricted in the shipped resource. Anyone on the server can run them. **Either restrict or remove them before going to production.**
+</Warning>
+
+A reasonable production hardening:
+
+```lua
+RegisterCommand('heist:test', function(source)
+    if source ~= 0 and not IsPlayerAceAllowed(source, 'admin') then return end
+    -- ...existing body...
+end, true)
+```
+
+## Removing the seed contracts
+
+`server/main.lua` registers two seed contracts (`fleeca_heist`, `paleto_bank`) inside a delayed thread so a fresh server has something to display. Once your real heist resources call `RegisterContract`, you can delete the seed block:
+
+```lua
+-- DELETE this whole function and the CreateThread that calls it:
+local function seedTestContracts()
+    if Registry.Get('fleeca_heist') then return end
+    RegisterContract({ ... }, function(...) end)
+    RegisterContract({ ... }, function(...) end)
+end
+
+CreateThread(function()
+    Wait(1500)
+    seedTestContracts()
+end)
+```
+
+## Resetting a profile (manual)
+
+There's no command for this — it's straight SQL:
+
+```sql
+DELETE FROM heist_profiles WHERE citizenid = 'ABC12345';
+```
+
+The next time the player opens the dashboard, a fresh row is inserted with level 1, 0 XP, 0 VICE, no slots, no stats, no training. They'll be prompted for an alias again.
+
+To wipe just XP without losing the alias and ledger:
+
+```sql
+UPDATE heist_profiles SET level = 1, xp = 0 WHERE citizenid = 'ABC12345';
+```
+
+Cache will be stale until they reconnect — alternatively, push them off the server so `playerDropped` evicts them, or restart `cc_heistcontracts` to flush the entire cache.
+
+## Debug logging
+
+`config.debug = true` in `shared/config.lua` toggles `[DEBUG]` lines from `utils.dprint`. Default is on. Useful lines you'll see:
+
+- `[DEBUG] rotation rolled: N contracts, expires in <ms>ms` — every rotation roll.
+- `[DEBUG] entry_point error for <id>: <msg>` — when a contract's entry point throws on Start.
+- `[DEBUG] Profile.GetBySrc: no citizenid for src <n>` — citizenid lookup failed (usually means the player isn't fully loaded into the core yet).
+
+For production, flip `config.debug = false`. Server prints only happen on actual failures after that.

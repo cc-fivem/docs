@@ -1,0 +1,137 @@
+---
+title: "Registering contracts"
+description: "How a heist resource hooks into cc_heistcontracts."
+---
+
+`cc_heistcontracts` doesn't ship any heists — it just runs the marketplace, slot economy, and dashboard around them. Your heist resource registers itself by calling `RegisterContract` on the server.
+
+## The `RegisterContract` export
+
+```lua
+local cc = exports.cc_heistcontracts
+
+local id = cc:RegisterContract({
+    id = 'fleeca_heist',
+    name = 'Fleeca Heist',
+    title = 'Fleeca Branch Heist',
+    description = 'Hit a Fleeca branch. Low risk, low reward.',
+    difficulty = 'easy',
+    levelRequired = 1,
+    price = 2500,
+    crewSize = { min = 2, max = 4 },
+    duration = 1200,
+    reward = { vice = 1500, cash = 12000, xp = 250 },
+    itemsRequired = {
+        { id = 'lockpick', qty = 1 },
+    },
+    locations = {
+        { id = 'pinkcage', label = 'Pinkcage Branch' },
+        { id = 'rockford', label = 'Rockford Branch' },
+    },
+    objectives = {
+        'Hack the electrical box',
+        'Crack the vault',
+        'Escape the police',
+    },
+}, function(runtimeData)
+    -- Your heist runs from here. runtimeData includes:
+    --   contractId  — the id you registered
+    --   acquiredAt  — os.time() when the player bought the slot
+    --   startedBy   — server source id of the player who started
+    --   plus anything the dashboard threaded through (group name, location id, …)
+end)
+```
+
+`RegisterContract` returns the contract `id`. Call it once per contract from your heist resource's server boot — typically inside a delayed thread so dependencies are up first:
+
+```lua
+CreateThread(function()
+    Wait(2000)
+    exports.cc_heistcontracts:RegisterContract({ ... }, entryPoint)
+end)
+```
+
+### Field reference
+
+| Field | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `id` | string | — | Stable key. **Required** unless you pass `name` (then `id = name`). Don't change after release — players' slot rows reference it. |
+| `name` | string | falls back to `id` | Legacy display field, kept for back-compat. |
+| `title` | string | falls back to `name` | Header shown in the dashboard. |
+| `description` | string | `''` | One- or two-line pitch. |
+| `difficulty` | string | `'medium'` | Free-form; the dashboard renders it as a chip. Common values: `easy`, `medium`, `hard`. |
+| `levelRequired` | int | `1` | Server enforces this on purchase. The dashboard greys out the buy button below the threshold. |
+| `price` | int | `0` | VICE cost to acquire a slot. |
+| `crewSize` | `{ min, max }` | `{ min = 1, max = 4 }` | Display-only today. Your entry point is responsible for enforcing actual crew size. |
+| `duration` | int (seconds) | `0` | Display-only. |
+| `reward` | `{ vice, cash, xp }` | `{}` | Display-only. Your entry point is responsible for actually crediting the player on success — call back into [Profile.AddVice / AddXp](#granting-rewards-from-your-heist) (see below). |
+| `itemsRequired` | array of `{ id, qty }` | `{}` | Display-only. The dashboard shows whether the player has them in their inventory; nothing is consumed at start. |
+| `locations` | array of `{ id, label }` | `{}` | Surfaced to the dashboard so the player can pick which variant of the heist to run. The chosen location is threaded into `runtimeData.location`. |
+| `objectives` | array of strings | `{}` | Display-only checklist in the dashboard. |
+
+Anything outside this list is silently dropped by the normalizer — see `server/registry.lua:normalize` for the full list.
+
+## What happens after registration
+
+<Steps>
+  <Step title="Contract enters the registry">
+    Stored in memory, keyed by `id`. Survives until the resource restarts.
+  </Step>
+  <Step title="Rotation re-rolls">
+    The first registration ever triggers a one-shot re-roll so dev runs see the contract immediately. Otherwise you wait for the next tick of the rotation timer — `config.rotation.intervalMs` from boot.
+  </Step>
+  <Step title="Player buys it">
+    They open the dashboard, see your contract in the rotation, click buy. The server validates VICE balance, level, and slot availability, debits the price, fills a slot.
+  </Step>
+  <Step title="Player starts it">
+    They click Start in the slot card. The server clears the slot and calls **your `entry_point` function** with the `runtimeData` table.
+  </Step>
+</Steps>
+
+## Granting rewards from your heist
+
+`reward = { vice, cash, xp }` on the contract definition is **display only**. Your entry point is the one that actually credits the player when the heist completes. The recommended way:
+
+```lua
+function entryPoint(runtimeData)
+    -- ...run the heist...
+
+    if heistSucceeded then
+        local Profile = _G.HeistProfile
+        if Profile then
+            Profile.AddVice(runtimeData.startedBy, 1500, 'Fleeca heist completed')
+            Profile.AddXp(runtimeData.startedBy, 250)
+            Profile.RecordCompletion(runtimeData.startedBy, runtimeData.contractId, 1500)
+        end
+    else
+        local Profile = _G.HeistProfile
+        if Profile then
+            Profile.RecordFailure(runtimeData.startedBy, runtimeData.contractId)
+        end
+    end
+end
+```
+
+The `_G.HeistProfile` global is set by `server/profile.lua` and exposes the full mutator surface. Cash payouts use whatever your core's money API is (e.g. `cc_lib.Core` or `qbx_core` directly) — `cc_heistcontracts` does not handle cash.
+
+<Note>
+  XP additions automatically advance the level if the new total crosses level thresholds. The dashboard reflects new XP / level on its next sync (the helper `_G.HeistSync.SendProfile(src)` triggers an immediate push).
+</Note>
+
+## The legacy `StartContract` export
+
+```lua
+exports.cc_heistcontracts:StartContract('fleeca_heist', { group = 'test', location = { id = 'pinkcage' } })
+```
+
+This is the old-shape entry — directly invokes a contract's entry point, bypassing the slot/purchase/VICE flow. It still works (the seed test commands `/heist:test` and `/heist:test2` use it), but new integrations should use the dashboard-driven slot flow.
+
+## Picking up cross-resource events
+
+A few server events are useful for cross-resource integration:
+
+| Event | When it fires | Use case |
+| --- | --- | --- |
+| `cc_heistcontracts:rotationChanged` | Server-local; fired right after the rotation re-rolls. | Notify a Discord webhook, refresh a separate UI, etc. |
+
+For player-action wiring (purchases, transfers, training unlocks) you generally don't need to listen — the slot-fill / VICE debit is already routed through `Profile`, which you can read at any time via `_G.HeistProfile.GetBySrc(src)`.

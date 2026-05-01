@@ -1,0 +1,198 @@
+---
+title: "Configuration"
+description: "Every config knob across the three shared/*.lua files."
+---
+
+All configuration lives in `shared/`. Three files, all hot-editable — restart the resource to apply.
+
+## `shared/config.lua` — core resource
+
+### Currency
+
+```lua
+config.currency = {
+    name = 'VICE',
+    shortName = 'VICE',
+}
+```
+
+Display name for the built-in currency. Shown everywhere VICE is referenced in the dashboard.
+
+### Rotation
+
+```lua
+config.rotation = {
+    intervalMs = 20 * 60 * 1000, -- 20 minutes
+    size = 5,
+}
+```
+
+| Field | Effect |
+| --- | --- |
+| `intervalMs` | How often the marketplace re-rolls. The first roll happens 3 seconds after server start (after dependencies have loaded), then every `intervalMs` thereafter. |
+| `size` | How many contracts to expose at once. Clamped to `min(size, totalRegisteredContracts)` so a small registry doesn't break the roll. |
+
+### Slots
+
+```lua
+config.slots = { max = 3 }
+```
+
+How many contracts a single player can hold at once. Slots are filled by purchase and emptied on start, discard, or transfer-out.
+
+### Invite expiry
+
+```lua
+config.inviteExpiryMs = 60 * 1000
+```
+
+Applies to both contract transfer invites and crew invites. After this elapses, the invite auto-cleans server-side.
+
+### Open key
+
+```lua
+config.openKey = 'F6'
+```
+
+The key registered with `RegisterKeyMapping`. Players can rebind it from FiveM's settings menu under "Keybinds → FiveM". The chat command `/heist` always works regardless.
+
+### XP / leveling
+
+The XP curve is configurable two ways. Quadratic by default:
+
+```lua
+config.xp = {
+    base = 100,
+    exponent = 2,
+    -- requirements = nil,
+}
+```
+
+Cumulative XP needed to reach level N from scratch is `base * (N - 1) ^ exponent`. With the defaults:
+
+| Level | Cumulative XP |
+| --- | --- |
+| 2 | 100 |
+| 3 | 400 |
+| 4 | 900 |
+| 10 | 8 100 |
+| 20 | 36 100 |
+
+For an explicit table, set `requirements`:
+
+```lua
+config.xp = {
+    requirements = { 0, 100, 250, 600, 1200, 2200 },
+}
+```
+
+Index N is the cumulative XP needed to reach level N. Index 1 must be `0`. Past the end, the last delta repeats — in the example above, level 7 needs `2200 + (2200 - 1200) = 3200`.
+
+The dashboard's level ring is rendered server-side per profile, so curve changes flow through automatically — no client-side curve duplication.
+
+### Debug
+
+```lua
+config.debug = true
+```
+
+Toggles `utils.dprint` (server-side `[DEBUG]` logging). Default is on; flip to `false` for production.
+
+## `shared/marketplace_config.lua` — items + pickups
+
+Two top-level tables: `items` (what's for sale) and `locations` (where the player has to go to claim a checkout).
+
+### Items
+
+```lua
+M.items = {
+    explosives = {
+        label = 'Explosives',
+        items = {
+            { id = 'c4',       name = 'C4',             price = 2500 },
+            { id = 'thermite', name = 'Thermite',       price = 1800 },
+            ...
+        },
+    },
+    hacking = { ... },
+    masks   = { ... },
+    vehicles = { ... },
+    tools = { ... },
+}
+```
+
+| Field | Notes |
+| --- | --- |
+| top-level key (e.g. `explosives`) | Internal category id; appears in the dashboard URL state but not the UI. |
+| `label` | Human-readable category header. |
+| `items[].id` | **Must match your inventory system's item name.** This is what `cc_lib.Inventory.AddItem` is called with on pickup. |
+| `items[].name` | Display name in the dashboard. |
+| `items[].price` | VICE cost per unit. |
+| `items[].icon` | Optional. Maps to a key in `ui/src/icons.ts`. Falls back to the category icon. |
+
+### Locations
+
+```lua
+M.locations = {
+    { name = 'El Burro Heights',   coords = vector3(1128.21, -2034.86, 32.07), window = 600, radius = 0.6 },
+    { name = 'Harmony Warehouse',  coords = vector3(614.71,   2783.87, 43.66), window = 600, radius = 0.6 },
+    ...
+}
+```
+
+| Field | Notes |
+| --- | --- |
+| `name` | Shown to the player and on the GPS waypoint label. |
+| `coords` | World coords of the door the player has to knock on. |
+| `window` | Pickup time window in seconds. After this elapses, the pickup is dropped server-side and the player loses the items. The default for shipped locations is 600 (10 minutes). |
+| `radius` | ox_target sphere radius. Defaults to `0.6` if omitted. |
+
+On checkout, the server picks one location uniformly at random and starts a `setTimeout(window * 1000)` to drop the pickup if it's not claimed.
+
+<Note>
+  Multiple checkouts by the same player while a pickup is still active **merge** into the existing pickup instead of rolling a new location. Item quantities are summed; the original deadline is preserved.
+</Note>
+
+## `shared/training_config.lua` — training sandbox
+
+```lua
+config.accessPrice = 5000
+```
+
+VICE fee to unlock the training sandbox at all. Charged once. Set to `0` to make access free.
+
+### Minigames list
+
+Each entry is one practice card in the dashboard's Training tab.
+
+```lua
+{ id = 'drill',    label = 'Drill',    source = 'cc_minigames', minigame = 'Drill',   price = 0,    includedFree = true },
+{ id = 'crack',    label = 'Crack',    source = 'cc_minigames', minigame = 'Crack',   price = 1500, levelRequired = 2 },
+{
+    id     = 'my_custom',
+    label  = 'My Custom Game',
+    source = 'custom',
+    price  = 3000,
+    invoke = function() return exports['my_resource']:Run({ difficulty = 'medium' }) end,
+},
+```
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `id` | Yes | Stable identifier; used as the DB key in `training_minigames` JSON. Don't rename existing ids in production — players will lose unlocks. |
+| `label` | Yes | Display name on the card. |
+| `source` | Yes | `'cc_minigames'` or `'custom'`. |
+| `minigame` | If `source = 'cc_minigames'` | Export name on `cc_minigames` (e.g. `'Drill'`, `'Crack'`). The dashboard's iframe loads this game directly. |
+| `invoke` | If `source = 'custom'` | Callable run on the **client** in the `cc_heistcontracts` resource context after the dashboard closes. Return value (success bool) is logged. |
+| `price` | Yes | VICE cost. `0` paired with `includedFree = true` makes it free with the access fee. |
+| `includedFree` | No | If `true`, the entry is auto-unlocked the moment the player pays for access. |
+| `levelRequired` | No | Hides name/buttons and shows a red ring with the required level until the player reaches it. Server enforces too. |
+
+A lookup index `config.byId` is built once on require. Don't mutate it directly; rebuild by editing `config.minigames` and restarting.
+
+### Custom-source contract for the `invoke` function
+
+- Runs **client-side**, in this resource's context, inside a `CreateThread`.
+- Wrapped in `pcall`; throwing inside `invoke` is logged and treated as failure.
+- Return value `true` = pass, anything else = fail. The result is sent to the dashboard NUI as a `trainingFinished` event.
+- The dashboard closes before invocation. Re-open it manually if your minigame needs the dashboard up.
