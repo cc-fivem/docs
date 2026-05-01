@@ -1,0 +1,117 @@
+/* CC Scripts theme overrides — tuned to match the marketing site palette.
+   Mintlify exposes a set of CSS custom properties; we override the dark-mode
+   ones used for surfaces and text. */
+
+:root,
+.dark {
+  /* Brand */
+  --primary: #155EEF;
+  --primary-light: #155EEF;
+  --primary-dark: #155EEF;
+
+  /* Surfaces */
+  --background-dark: #09090B;
+  --background-light: #FFFFFF;
+}
+
+/* Dark mode: gray surfaces (sidebar, cards, code blocks, callouts). */
+.dark {
+  --gray-950: #09090B;
+  --gray-900: #171719;
+  --gray-800: #1E1E22;
+  --gray-700: #2A2A2F;
+  --gray-600: #3A3A40;
+  --gray-500: #5A5A63;
+  --gray-400: #9F9FA9;
+  --gray-300: #C4C4CB;
+  --gray-200: #DCDCE0;
+  --gray-100: #EDEDEF;
+}
+
+/* Body / secondary text in dark mode. */
+html.dark,
+html.dark body {
+  background-color: #09090B;
+  color: #9F9FA9;
+}
+
+/* Headings stay white in dark mode for the marketing-site contrast. */
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6 {
+  color: #FFFFFF;
+}
+
+/* Sidebar + topbar surfaces — Mintlify uses background-color: var(--gray-...)
+   on these; the override above wires the right shade in. We also nudge the
+   sidebar a tone darker than the page so it reads as a panel. */
+html.dark aside,
+html.dark nav[aria-label="Sidebar"],
+html.dark [class*="Sidebar"] {
+  background-color: #09090B;
+}
+
+/* Code blocks + inline code surfaces. */
+html.dark pre,
+html.dark code {
+  background-color: #171719;
+}
+
+/* Card panels (used by <Card> and <Columns> on the index page). */
+html.dark [class*="card"],
+html.dark [class*="Card"] {
+  background-color: #171719;
+  border-color: #1E1E22;
+}
+
+html.dark [class*="card"]:hover,
+html.dark [class*="Card"]:hover {
+  background-color: #1E1E22;
+}
+
+/* Callouts (Note, Tip, Warning, Info) — make their surface match the gray
+   panels rather than tinted brand colors that would clash with the deep black. */
+html.dark [class*="Callout"],
+html.dark [role="note"],
+html.dark [role="alert"] {
+  background-color: #171719;
+  border-color: #1E1E22;
+}
+
+/* Tables. */
+html.dark table {
+  background-color: transparent;
+}
+html.dark th {
+  background-color: #171719;
+  color: #FFFFFF;
+}
+html.dark td {
+  border-color: #1E1E22;
+}
+
+/* Primary button / CTA — matches the marketing site's blue pill. */
+html.dark button[class*="primary"],
+html.dark a[class*="primary"] {
+  background-color: #155EEF;
+  color: #FFFFFF;
+}
+html.dark button[class*="primary"]:hover,
+html.dark a[class*="primary"]:hover {
+  background-color: #1A6BFF;
+}
+
+/* Scrollbar tone-down so it doesn't strobe on the deep black background. */
+html.dark ::-webkit-scrollbar-track {
+  background-color: #09090B;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background-color: #1E1E22;
+  border-radius: 4px;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: #2A2A2F;
+}
