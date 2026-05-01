@@ -21,6 +21,7 @@ local id = cc:RegisterContract({
     price = 2500,
     crewSize = { min = 2, max = 4 },
     duration = 1200,
+    cooldown = 1800, -- optional; see Cooldowns below
     reward = { vice = 1500, cash = 12000, xp = 250 },
     itemsRequired = {
         { id = 'lockpick', qty = 1 },
@@ -40,7 +41,12 @@ local id = cc:RegisterContract({
     --   acquiredAt  — os.time() when the player bought the slot
     --   startedBy   — server source id of the player who started
     --   plus anything the dashboard threaded through (group name, location id, …)
-end)
+end, {
+    -- Optional third arg. Currently used for the cooldown reset hook.
+    reset = function(ctx)
+        -- Fires server-wide when the cooldown expires. ctx = { contractId, firedAt }.
+    end,
+})
 ```
 
 `RegisterContract` returns the contract `id`. Call it once per contract from your heist resource's server boot — typically inside a delayed thread so dependencies are up first:
@@ -51,6 +57,8 @@ CreateThread(function()
     exports.cc_heistcontracts:RegisterContract({ ... }, entryPoint)
 end)
 ```
+
+The third argument is optional — pass it only if you need a `reset` callback. See [Cooldowns](#cooldowns) below.
 
 ### Field reference
 
@@ -69,6 +77,7 @@ end)
 | `itemsRequired` | array of `{ id, qty }` | `{}` | Display-only. The dashboard shows whether the player has them in their inventory; nothing is consumed at start. |
 | `locations` | array of `{ id, label }` | `{}` | Surfaced to the dashboard so the player can pick which variant of the heist to run. The chosen location is threaded into `runtimeData.location`. |
 | `objectives` | array of strings | `{}` | Display-only checklist in the dashboard. |
+| `cooldown` | int (seconds) | `0` | Server-wide cooldown applied when you call `ApplyCooldown`. While active, `Purchase.Start` rejects with `'on_cooldown'` for everyone. Players can still _buy_ it during cooldown — they just can't start it. `0` disables. See [Cooldowns](#cooldowns). |
 
 Anything outside this list is silently dropped by the normalizer — see `server/registry.lua:normalize` for the full list.
 
@@ -85,7 +94,7 @@ Anything outside this list is silently dropped by the normalizer — see `server
     They open the dashboard, see your contract in the rotation, click buy. The server validates VICE balance, level, and slot availability, debits the price, fills a slot.
   </Step>
   <Step title="Player starts it">
-    They click Start in the slot card. The server clears the slot and calls **your `entry_point` function** with the `runtimeData` table.
+    They click Start in the slot card. The server checks the contract isn't on a server-wide cooldown (see [Cooldowns](#cooldowns)), clears the slot, and calls **your `entry_point` function** with the `runtimeData` table.
   </Step>
 </Steps>
 
@@ -119,13 +128,52 @@ The `_G.HeistProfile` global is set by `server/profile.lua` and exposes the full
   XP additions automatically advance the level if the new total crosses level thresholds. The dashboard reflects new XP / level on its next sync (the helper `_G.HeistSync.SendProfile(src)` triggers an immediate push).
 </Note>
 
+## Cooldowns
+
+Cooldowns are **server-wide per contract**, not per player. Set `cooldown = <seconds>` on the contract and call `ApplyCooldown` from your entry point when the heist completes (or starts — whichever fits your design). While the cooldown is active, `Purchase.Start` rejects with `'on_cooldown'` for every player. Buying is **not** blocked — players can still acquire a slot during cooldown, they just can't start it until the timer ends.
+
+```lua
+RegisterContract({
+    id = 'paleto_bank',
+    -- ...
+    cooldown = 3600, -- 1 hour, server-wide
+}, function(runtimeData)
+    -- ...run the heist...
+
+    -- Lock the contract out for everyone for 3600s.
+    exports.cc_heistcontracts:ApplyCooldown(runtimeData.contractId)
+end, {
+    reset = function(ctx)
+        -- ctx = { contractId, firedAt }
+        -- Fires once, server-wide, when the cooldown ends. Use this to
+        -- restore world state for the next run (respawn props, reset NPCs,
+        -- clear pending alerts, etc.). Optional — omit if you don't need it.
+    end,
+})
+```
+
+### `ApplyCooldown` export
+
+```lua
+exports.cc_heistcontracts:ApplyCooldown(contractId)
+```
+
+Stamps the configured cooldown on `contractId` and schedules the `reset` callback. Returns the unix-seconds expiry timestamp, or `0` if the contract has no `cooldown` configured (or the id is unknown). Calling it again before the timer expires re-stamps from "now" — the previously-scheduled reset will silently no-op.
+
+### Behaviour notes
+
+- **In-memory only.** Cooldowns do not persist across resource restarts. The reasoning: when the resource restarts, your heist's world state resets too, so a leftover cooldown would lock players out of a perfectly fresh heist.
+- **Single timer per contract.** `reset` fires exactly once per cooldown cycle, even if `ApplyCooldown` is called multiple times during the cycle.
+- **No automatic apply.** `cooldown` on the contract definition is just a duration — nothing happens until your entry point calls `ApplyCooldown`. This lets you decide whether to lock the heist on success only, on start, or conditionally.
+- **Surfaced in the rotation payload.** Active cooldowns ship to the dashboard as `rotation.cooldowns = { [contractId] = expiresAtUnixSeconds }`, so the UI can grey out cooldowned cards.
+
 ## The legacy `StartContract` export
 
 ```lua
 exports.cc_heistcontracts:StartContract('fleeca_heist', { group = 'test', location = { id = 'pinkcage' } })
 ```
 
-This is the old-shape entry — directly invokes a contract's entry point, bypassing the slot/purchase/VICE flow. It still works (the seed test commands `/heist:test` and `/heist:test2` use it), but new integrations should use the dashboard-driven slot flow.
+This is the old-shape entry — directly invokes a contract's entry point, bypassing the slot/purchase/VICE flow **and the cooldown gate**. It still works (the seed test commands `/heist:test` and `/heist:test2` use it), but new integrations should use the dashboard-driven slot flow.
 
 ## Picking up cross-resource events
 
