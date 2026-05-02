@@ -1,0 +1,39 @@
+---
+title: "Changelog"
+description: "Release notes for every CC Scripts resource — newest at the top."
+---
+
+<Update label="2026-05-02" description="docs.cc-scripts.com" tags={["Docs"]}>
+  ## Documentation site launched
+
+  - Initial public docs covering [cc_minigames](/cc_minigames/index) and [cc_heistcontracts](/cc_heistcontracts/index).
+  - Welcome page, support contacts, refund and terms links.
+  - This changelog.
+</Update>
+
+<Update label="2026-04-30" description="cc_heistcontracts v1.0.0" tags={["cc_heistcontracts", "Release"]}>
+  ## Initial release
+
+  - Public **`RegisterContract`** export so any heist resource can plug in.
+  - Dashboard NUI on `F6` / `/heist` — alias gating, contracts, slots, ledger, crew, marketplace, training.
+  - Server-authoritative **VICE economy** with a 50-entry per-player ledger.
+  - **Rotation engine** rolling `config.rotation.size` contracts every 20 minutes (configurable).
+  - **Marketplace** with VICE checkout, server-rolled pickup locations, ox_target "Knock" interaction, time-windowed expiry.
+  - **Training sandbox** with one-time access fee + per-minigame unlocks gated by player level.
+  - **Crew layer** wrapping `cc_lib.Groups` with invites and disband-on-leader-leave.
+  - **Inter-player contract transfers** with auto-expiring invites.
+  - SQL migrations 001–003 (heist_profiles, alias, training).
+  - Admin command `/heist:grantxp <alias> <amount>` (ACE-gated).
+</Update>
+
+<Update label="2026-04-30" description="cc_minigames v1.0.0" tags={["cc_minigames", "Release"]}>
+  ## Initial release
+
+  - **31 minigames** across terminal, bare, strip, and screen-4x3 variants.
+  - Difficulty tiers (`easy` / `medium` / `hard`) with tuned defaults; every individual knob overridable per call.
+  - Blocking exports: each minigame yields the calling coroutine until the player passes, fails, or escapes.
+  - **Schematic Control Panel** for heist resources to render persistent door/camera UIs.
+  - **DUI session helper** so any minigame can be projected onto an in-world prop texture (CRTs, monitors).
+  - **Frequency** — server-authoritative two-player tuning game; the only minigame that requires the server.
+  - `/minigame` test command for previewing every game with arbitrary args.
+</Update>
