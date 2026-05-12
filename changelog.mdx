@@ -16,9 +16,12 @@ description: "Release notes for every CC Scripts resource — newest at the top.
   - One heist at a time per player. The dashboard disables Start/Discard/Transfer on the other slots, and crew invites, while a heist is active.
   - The dashboard renders an `ActiveHeistPanel` for the running slot, with an elapsed-time counter and a two-stage **Give Up** button.
 
-  ### New exports
-  - `exports.cc_heistcontracts:FinishContract(src, success)` — heist resources call this for every group member when their heist ends. Awards VICE + XP from the contract's `reward` table on success, records stats. See [Registering contracts](/cc_heistcontracts/registering-contracts#finishcontract).
-  - `exports('CancelHeist', function(src))` — heist resources implement this on their own resource. cc_heistcontracts calls it when a player gives up so the run can be torn down for the whole group. See [Registering contracts](/cc_heistcontracts/registering-contracts#cancelheist-recommended).
+  ### Integration API
+  - The whole integration lives in a single `RegisterContract` call — no separate exports on the heist resource.
+  - **`opts.cancel`** callback in `RegisterContract` opts: fires when a player presses Give Up. cc_heistcontracts auto-finishes every group member's slot after the callback returns. The Give Up button is **hidden** when this callback isn't provided. See [Registering contracts](/cc_heistcontracts/registering-contracts#opts-cancel-handling-give-up).
+  - **`opts.reset`** callback is unchanged; documented alongside `cancel` so the distinction is clear.
+  - New **`exports.cc_heistcontracts:FinishHeist(groupName, success)`** — group-aware convenience that loops members and finishes each slot in one call. `FinishContract(src, success)` stays for single-player use. See [Registering contracts](/cc_heistcontracts/registering-contracts#finishheist-and-finishcontract).
+  - Added a worked example for [integrating an escrowed third-party heist](/cc_heistcontracts/registering-contracts#integrating-a-third-party-escrowed-heist) in one wrapper file.
 
   ### Other
   - Friendlier toast messages for buy / start failures.

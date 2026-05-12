@@ -18,11 +18,7 @@ icon: 'star'
 
 ## Mental model
 
-A heist resource plugs in by implementing three things:
-
-1. **Register**: call `exports.cc_heistcontracts:RegisterContract(data, entry_point, opts?)` on server start.
-2. **Finish**: when your heist ends — success or failure — call `exports.cc_heistcontracts:FinishContract(src, success)` for every member of the heist's group.
-3. **Cancel** (optional): expose `exports('CancelHeist', function(src))` so the dashboard's Give Up button can tear your heist down for the whole group.
+The whole integration lives in **one `RegisterContract` call** — no extra exports on the heist resource. A custom wrapper for a third-party heist can be a single Lua file.
 
 ```lua
 exports.cc_heistcontracts:RegisterContract({
@@ -30,28 +26,37 @@ exports.cc_heistcontracts:RegisterContract({
     title = 'Fleeca Branch Heist',
     description = 'Hit a Fleeca branch. Low risk, low reward.',
     difficulty = 'easy',
-    weight = 1.0,        -- rarity weight when the marketplace picks a new listing
+    weight = 1.0,
     levelRequired = 1,
     price = 2500,
     crewSize = { min = 2, max = 4 },
     duration = 1200,
     reward = { vice = 1500, cash = 12000, xp = 250 },
-    itemsRequired = { { id = 'lockpick', qty = 1 } },
     locations = { { id = 'pinkcage', label = 'Pinkcage Branch' } },
-    objectives = { 'Hack the box', 'Crack the vault', 'Escape' },
 }, function(runtimeData)
     -- runtimeData = { contractId, acquiredAt, startedBy, slotIndex, group, location? }
-    -- Run your heist here, then call FinishContract(src, success) per member.
+    exports.your_heist:Start({ group = runtimeData.group, location = runtimeData.location })
+end, {
+    cancel = function(ctx)
+        -- ctx = { src, group, contractId, slotIndex }
+        -- Tear the heist down for ctx.group. Slots are freed automatically.
+        exports.your_heist:Abort(ctx.group)
+    end,
+})
+
+-- Then, when your heist's completion event fires:
+AddEventHandler('your_heist:complete', function(group, success)
+    exports.cc_heistcontracts:FinishHeist(group, success)
 end)
 ```
 
-VICE and XP rewards are credited automatically by `FinishContract` from the contract's `reward` table. Cash and inventory rewards are still up to the heist resource — `cc_heistcontracts` doesn't touch player money or inventory directly.
+That's it. VICE and XP rewards are credited automatically on success. Cash and inventory rewards remain the heist's responsibility — `cc_heistcontracts` doesn't touch player money or inventory directly. The `cancel` callback is optional; if you omit it, the dashboard hides the Give Up button.
 
 ## Capabilities at a glance
 
 <Columns cols={2}>
   <Card title="Register contracts" icon="plug" href="/cc_heistcontracts/registering-contracts">
-    The integration contract: `RegisterContract`, `FinishContract`, `CancelHeist`. Plus optional `ApplyCooldown` for server-wide locks.
+    One `RegisterContract` call with optional `cancel` + `reset` callbacks in `opts`. Plus `FinishHeist`/`FinishContract` to signal completion, and `ApplyCooldown` for server-wide locks.
   </Card>
   <Card title="Configure listings, slots, XP" icon="sliders" href="/cc_heistcontracts/configuration">
     Three config files: `shared/config.lua`, `shared/marketplace_config.lua`, `shared/training_config.lua`. All hot-editable; restart the resource to apply.

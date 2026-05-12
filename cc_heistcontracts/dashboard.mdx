@@ -170,9 +170,11 @@ When `profile.activeSlot` is set, the dashboard switches into "in-progress" mode
 - The other slots' Start buttons are disabled with the tooltip "Already in a heist".
 - The active slot itself can't be Discarded or Transferred — those buttons are disabled with explanatory tooltips.
 - The sidebar's "No active heist" widget swaps to show the active contract's title with a red border, clickable to jump to its detail view.
-- The detail view shows an `ActiveHeistPanel` instead of Start/Transfer/Discard — it includes the elapsed time and a "Give up heist" button.
+- The detail view shows an `ActiveHeistPanel` instead of Start/Transfer/Discard — it includes the elapsed time and (when the contract supports it) a "Give up heist" button.
 
 The Give Up button is a two-stage confirm: first click arms it ("Click again to confirm"), second click commits. The arm state auto-resets after 4 seconds.
+
+The button is **hidden** when the contract didn't register an `opts.cancel` callback — the integration doesn't have a way to cleanly abort the in-world heist, so the dashboard doesn't expose a button that would partially work. Player still has to either finish the run or wait it out.
 
 ## Post-action redirects
 
