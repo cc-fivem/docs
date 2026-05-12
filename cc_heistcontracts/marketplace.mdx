@@ -81,7 +81,7 @@ The dashboard's "Set GPS" button on the pickup banner uses the client-side `pick
 | `already_delivered` | Race condition — first claim already won. |
 | `expired` | Player ran out the time window. The pickup is dropped at the same time. |
 
-The dashboard surfaces these as `error` toasts with the literal error code in the message, so a player seeing `Pickup failed: expired` knows exactly what happened.
+The dashboard surfaces these as `error` toasts with the literal error code in the message, so a player seeing `Pickup failed: expired` knows exactly what happened. Buy and start errors have friendlier message mappings — see the [error toasts table](/cc_heistcontracts/dashboard#error-toasts).
 
 ## Auto-cleanup
 

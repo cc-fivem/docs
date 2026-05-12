@@ -4,24 +4,42 @@ description: "How a heist resource hooks into cc_heistcontracts."
 icon: 'plug'
 ---
 
-`cc_heistcontracts` doesn't ship any heists — it just runs the marketplace, slot economy, and dashboard around them. Your heist resource registers itself by calling `RegisterContract` on the server.
+`cc_heistcontracts` doesn't ship any heists — it just runs the marketplace, slot economy, and dashboard around them. A heist resource integrates by implementing three things on the server:
 
-## The `RegisterContract` export
+1. **Register** the contract once on resource boot.
+2. **Finish** the contract when your heist ends, for every player in the group.
+3. **Cancel** (optional) when the dashboard asks you to.
+
+## The three exports
+
+| Export | Direction | When |
+| --- | --- | --- |
+| `exports.cc_heistcontracts:RegisterContract(data, entry_point, opts?)` | heist → cc_heistcontracts | On resource start. Registers the contract so it can drip into the marketplace. |
+| `exports.cc_heistcontracts:FinishContract(src, success)` | heist → cc_heistcontracts | When the heist ends. Called once per group member. |
+| `exports('CancelHeist', function(src))` | cc_heistcontracts → heist | When a player gives up from the dashboard. Optional but recommended. |
+
+Plus one optional helper:
+
+| Export | Direction | When |
+| --- | --- | --- |
+| `exports.cc_heistcontracts:ApplyCooldown(contractId)` | heist → cc_heistcontracts | When you want to lock the contract server-wide for the configured cooldown. |
+
+## `RegisterContract`
 
 ```lua
 local cc = exports.cc_heistcontracts
 
 local id = cc:RegisterContract({
     id = 'fleeca_heist',
-    name = 'Fleeca Heist',
     title = 'Fleeca Branch Heist',
     description = 'Hit a Fleeca branch. Low risk, low reward.',
     difficulty = 'easy',
+    weight = 1.0,
     levelRequired = 1,
     price = 2500,
     crewSize = { min = 2, max = 4 },
     duration = 1200,
-    cooldown = 1800, -- optional; see Cooldowns below
+    cooldown = 1800,
     reward = { vice = 1500, cash = 12000, xp = 250 },
     itemsRequired = {
         { id = 'lockpick', qty = 1 },
@@ -36,29 +54,24 @@ local id = cc:RegisterContract({
         'Escape the police',
     },
 }, function(runtimeData)
-    -- Your heist runs from here. runtimeData includes:
-    --   contractId  — the id you registered
-    --   acquiredAt  — os.time() when the player bought the slot
-    --   startedBy   — server source id of the player who started
-    --   plus anything the dashboard threaded through (group name, location id, …)
+    -- Your heist runs from here.
+    -- runtimeData = {
+    --   contractId  -- the id you registered
+    --   acquiredAt  -- os.time() when the player bought the slot
+    --   startedBy   -- server source id of the player who started
+    --   slotIndex   -- 1-based slot the contract was in
+    --   group       -- cc_lib.Groups name to dispatch events through
+    --   location    -- { id, label } picked from your `locations`
+    -- }
 end, {
-    -- Optional third arg. Currently used for the cooldown reset hook.
     reset = function(ctx)
-        -- Fires server-wide when the cooldown expires. ctx = { contractId, firedAt }.
+        -- Optional. Fires server-wide when the cooldown expires.
+        -- ctx = { contractId, firedAt }
     end,
 })
 ```
 
-`RegisterContract` returns the contract `id`. Call it once per contract from your heist resource's server boot — typically inside a delayed thread so dependencies are up first:
-
-```lua
-CreateThread(function()
-    Wait(2000)
-    exports.cc_heistcontracts:RegisterContract({ ... }, entryPoint)
-end)
-```
-
-The third argument is optional — pass it only if you need a `reset` callback. See [Cooldowns](#cooldowns) below.
+`RegisterContract` returns the contract `id`. Call it once per contract from your heist resource's server boot.
 
 ### Field reference
 
@@ -69,17 +82,22 @@ The third argument is optional — pass it only if you need a `reset` callback. 
 | `title` | string | falls back to `name` | Header shown in the dashboard. |
 | `description` | string | `''` | One- or two-line pitch. |
 | `difficulty` | string | `'medium'` | Free-form; the dashboard renders it as a chip. Common values: `easy`, `medium`, `hard`. |
+| `weight` | number | `1.0` | Relative probability of being picked when the marketplace drips a new listing. Higher = more common, lower = rarer. Set to `0` to disable from marketplace generation entirely. |
 | `levelRequired` | int | `1` | Server enforces this on purchase. The dashboard greys out the buy button below the threshold. |
 | `price` | int | `0` | VICE cost to acquire a slot. |
 | `crewSize` | `{ min, max }` | `{ min = 1, max = 4 }` | Display-only today. Your entry point is responsible for enforcing actual crew size. |
 | `duration` | int (seconds) | `0` | Display-only. |
-| `reward` | `{ vice, cash, xp }` | `{}` | Display-only. Your entry point is responsible for actually crediting the player on success — call back into [Profile.AddVice / AddXp](#granting-rewards-from-your-heist) (see below). |
-| `itemsRequired` | array of `{ id, qty }` | `{}` | Display-only. The dashboard shows whether the player has them in their inventory; nothing is consumed at start. |
-| `locations` | array of `{ id, label }` | `{}` | Surfaced to the dashboard so the player can pick which variant of the heist to run. The chosen location is threaded into `runtimeData.location`. |
+| `reward` | `{ vice, cash, xp }` | `{}` | `vice` and `xp` are **awarded automatically** by `FinishContract` on success. `cash` is display-only — your entry point handles cash and item payouts. |
+| `itemsRequired` | array of `{ id, qty }` | `{}` | Display-only. The dashboard shows whether the player has them; nothing is consumed at start. |
+| `locations` | array of `{ id, label }` | `{}` | If non-empty and the caller didn't pick one, the server rolls a random entry and threads it into `runtimeData.location`. |
 | `objectives` | array of strings | `{}` | Display-only checklist in the dashboard. |
-| `cooldown` | int (seconds) | `0` | Server-wide cooldown applied when you call `ApplyCooldown`. While active, `Purchase.Start` rejects with `'on_cooldown'` for everyone. Players can still _buy_ it during cooldown — they just can't start it. `0` disables. See [Cooldowns](#cooldowns). |
+| `cooldown` | int (seconds) | `0` | Server-wide cooldown duration. Stamped only when you call `ApplyCooldown`. While active, `Purchase.Start` rejects with `'on_cooldown'` for everyone. `0` disables. See [Cooldowns](#cooldowns). |
 
 Anything outside this list is silently dropped by the normalizer — see `server/registry.lua:normalize` for the full list.
+
+### The owner resource is recorded automatically
+
+`RegisterContract` uses `GetInvokingResource()` to record which resource registered each contract. This lets `cc_heistcontracts` look up your resource later when a player gives up, so it can call your `CancelHeist` export. Don't override this — it's set by the runtime, not by your contract data.
 
 ## What happens after registration
 
@@ -87,61 +105,129 @@ Anything outside this list is silently dropped by the normalizer — see `server
   <Step title="Contract enters the registry">
     Stored in memory, keyed by `id`. Survives until the resource restarts.
   </Step>
-  <Step title="Rotation re-rolls">
-    The first registration ever triggers a one-shot re-roll so dev runs see the contract immediately. Otherwise you wait for the next tick of the rotation timer — `config.rotation.intervalMs` from boot.
+  <Step title="Marketplace drips a listing">
+    On the next `dripIntervalMs` tick, the marketplace may pick your contract (weighted by its `weight` field) and add a new listing. The same contract can be listed multiple times in parallel.
   </Step>
-  <Step title="Player buys it">
-    They open the dashboard, see your contract in the rotation, click buy. The server validates VICE balance, level, and slot availability, debits the price, fills a slot.
+  <Step title="Player buys a listing">
+    They open the dashboard, see a listing in the marketplace, click buy. The server validates VICE balance, level, and slot availability, debits the price, fills a slot, and removes the listing. The next drip will refill.
   </Step>
-  <Step title="Player starts it">
-    They click Start in the slot card. The server checks the contract isn't on a server-wide cooldown (see [Cooldowns](#cooldowns)), clears the slot, and calls **your `entry_point` function** with the `runtimeData` table.
+  <Step title="Player starts a slot">
+    They click Start. The server checks the contract isn't on cooldown and the player isn't already in another heist, marks the slot active, rolls a random `location` if you didn't pass one, and calls **your `entry_point` function** with `runtimeData`. The dashboard closes.
+  </Step>
+  <Step title="Heist runs">
+    Your code runs. The dashboard, if reopened, shows an "in progress" panel with elapsed time. The other slots' Start buttons are disabled while one is active.
+  </Step>
+  <Step title="Heist ends">
+    Your code calls `FinishContract(src, success)` for every group member. cc_heistcontracts consumes their slot, awards rewards on success, records the stat, and pushes a fresh profile to their dashboard.
   </Step>
 </Steps>
 
-## Granting rewards from your heist
+## `FinishContract`
 
-`reward = { vice, cash, xp }` on the contract definition is **display only**. Your entry point is the one that actually credits the player when the heist completes. The recommended way:
+```lua
+exports.cc_heistcontracts:FinishContract(src, success)
+```
+
+Call this once per member of your heist's group when the heist ends. Pass `true` for success or `false` for failure.
+
+**What it does on success:**
+- Consumes the player's active slot (the slot is gone after this call).
+- Credits `reward.vice` to their VICE balance (with a ledger entry).
+- Credits `reward.xp` to their profile, advancing level if a threshold is crossed.
+- Increments `stats.completed` and updates `stats.byContract[id].completed`.
+- Sets `stats.favoriteContract` if this contract is now their most-completed.
+- Pushes a fresh profile snapshot to the player's dashboard.
+
+**What it does on failure:**
+- Consumes the slot.
+- Increments `stats.failed` and `stats.byContract[id].failed`.
+- No rewards.
+
+**Idempotent.** A second call for the same `src` while no heist is active returns `(false, 'not_active')`. Safe to call defensively from multiple code paths in your heist.
+
+### Picking your finish moment
+
+Where you call `FinishContract` defines what "the heist is over" means for your players. Typical patterns:
+
+- **Objective-driven**: when the last objective is completed (cc_lib's `TaskUI.Create` accepts an `onComplete` callback that fires when every task hits `'complete'`).
+- **Escape-driven**: when the player crosses an escape boundary or hands the goods off.
+- **Timer-driven**: when the heist's overall timer runs out — call with `success = false`.
+- **Cancellation**: when the dashboard's give-up flow asks you to (see `CancelHeist` below).
+
+`FinishContract` is a pure server-side state mutation — players don't see anything happen visually from it alone. Your heist resource is still responsible for the in-world feedback (notifications, animations, world reset).
+
+## `CancelHeist` (recommended)
+
+When a player presses Give Up in the dashboard, `cc_heistcontracts` looks up the owning resource of their active contract and calls:
+
+```lua
+exports.<your_resource>:CancelHeist(src)
+```
+
+Implement this export on your heist resource to tear the heist down for the whole group. Return `true` if you found a heist containing `src` and ended it; return `false` (or omit the return) if you didn't have an active heist for that player.
+
+```lua
+exports('CancelHeist', function(src)
+    local loc = sync.GetActiveLocation()
+    if not loc or not loc.group then return false end
+    local members = cc.Groups.GetMembers(loc.group)
+    if not members or not members[src] then return false end
+
+    -- Notify everyone, hide the task UI, reset the world.
+    for member, _ in pairs(members) do
+        cc.Notification.Info(member, 'Heist cancelled')
+        if loc.list then cc.TaskUI.Hide(loc.list, member) end
+        exports.cc_heistcontracts:FinishContract(member, false)
+    end
+    fn.ResetBank()  -- whatever world-state reset your heist needs
+    return true
+end)
+```
+
+**Behavior when CancelHeist isn't implemented**: cc_heistcontracts falls back to freeing only the abandoner's slot locally. The heist itself keeps running for the rest of the group. The player sees an info toast explaining this. Provide `CancelHeist` if your heist supports multi-member group state — the dashboard's Give Up flow is the best UX path for ending a run cleanly.
+
+**Behavior when CancelHeist throws or returns false**: cc_heistcontracts falls back to freeing the slot locally and shows a warning toast. The exception is logged to the server console.
+
+## Granting rewards
+
+`reward.vice` and `reward.xp` from your contract definition are **credited automatically** by `FinishContract` on success. You don't need to call `Profile.AddVice` or `Profile.AddXp` yourself for those.
+
+`reward.cash` is **not** handled by `cc_heistcontracts` — it's there for the dashboard's display only. Cash and inventory payouts are your responsibility, since they depend on which framework's money/inventory API you're using:
 
 ```lua
 function entryPoint(runtimeData)
     -- ...run the heist...
 
     if heistSucceeded then
-        local Profile = _G.HeistProfile
-        if Profile then
-            Profile.AddVice(runtimeData.startedBy, 1500, 'Fleeca heist completed')
-            Profile.AddXp(runtimeData.startedBy, 250)
-            Profile.RecordCompletion(runtimeData.startedBy, runtimeData.contractId, 1500)
-        end
+        -- Cash + items: your code, your core. cc_heistcontracts doesn't touch these.
+        cc.Core.AddMoney(runtimeData.startedBy, 'cash', 12000)
+        cc.Inventory.AddItem(runtimeData.startedBy, 'cash_stack', 1)
+
+        -- VICE + XP + stats: handled automatically when you call FinishContract.
+        exports.cc_heistcontracts:FinishContract(runtimeData.startedBy, true)
     else
-        local Profile = _G.HeistProfile
-        if Profile then
-            Profile.RecordFailure(runtimeData.startedBy, runtimeData.contractId)
-        end
+        exports.cc_heistcontracts:FinishContract(runtimeData.startedBy, false)
     end
 end
 ```
 
-The `_G.HeistProfile` global is set by `server/profile.lua` and exposes the full mutator surface. Cash payouts use whatever your core's money API is (e.g. `cc_lib.Core` or `qbx_core` directly) — `cc_heistcontracts` does not handle cash.
-
 <Note>
-  XP additions automatically advance the level if the new total crosses level thresholds. The dashboard reflects new XP / level on its next sync (the helper `_G.HeistSync.SendProfile(src)` triggers an immediate push).
+  If you need to award bonus VICE or XP outside of what's in the contract's `reward` (e.g. for a hidden objective), call into `_G.HeistProfile.AddVice(src, amount, note)` or `_G.HeistProfile.AddXp(src, amount)` directly. Then call `_G.HeistSync.SendProfile(src)` to push the update to the dashboard. Note that this is reaching into internals — the public contract is the reward table on registration.
 </Note>
 
 ## Cooldowns
 
-Cooldowns are **server-wide per contract**, not per player. Set `cooldown = <seconds>` on the contract and call `ApplyCooldown` from your entry point when the heist completes (or starts — whichever fits your design). While the cooldown is active, `Purchase.Start` rejects with `'on_cooldown'` for every player. Buying is **not** blocked — players can still acquire a slot during cooldown, they just can't start it until the timer ends.
+Cooldowns are **server-wide per contract**, not per player. Set `cooldown = <seconds>` on the contract and call `ApplyCooldown` from your entry point when the heist starts (or when it ends — your choice). While the cooldown is active, `Purchase.Start` rejects with `'on_cooldown'` for every player. Buying is **not** blocked — players can still acquire a slot during cooldown, they just can't start it until the timer ends.
 
 ```lua
-RegisterContract({
+exports.cc_heistcontracts:RegisterContract({
     id = 'paleto_bank',
     -- ...
     cooldown = 3600, -- 1 hour, server-wide
 }, function(runtimeData)
-    -- ...run the heist...
-
-    -- Lock the contract out for everyone for 3600s.
+    -- Lock the contract out for everyone for 3600s as soon as the heist starts.
     exports.cc_heistcontracts:ApplyCooldown(runtimeData.contractId)
+    -- ...run the heist...
 end, {
     reset = function(ctx)
         -- ctx = { contractId, firedAt }
@@ -164,7 +250,7 @@ Stamps the configured cooldown on `contractId` and schedules the `reset` callbac
 
 - **In-memory only.** Cooldowns do not persist across resource restarts. The reasoning: when the resource restarts, your heist's world state resets too, so a leftover cooldown would lock players out of a perfectly fresh heist.
 - **Single timer per contract.** `reset` fires exactly once per cooldown cycle, even if `ApplyCooldown` is called multiple times during the cycle.
-- **No automatic apply.** `cooldown` on the contract definition is just a duration — nothing happens until your entry point calls `ApplyCooldown`. This lets you decide whether to lock the heist on success only, on start, or conditionally.
+- **No automatic apply.** `cooldown` on the contract definition is just a duration — nothing happens until your entry point calls `ApplyCooldown`. This lets you decide whether to lock on success only, on start, or conditionally.
 - **Surfaced in the rotation payload.** Active cooldowns ship to the dashboard as `rotation.cooldowns = { [contractId] = expiresAtUnixSeconds }`, so the UI can grey out cooldowned cards.
 
 ## The legacy `StartContract` export
@@ -173,14 +259,12 @@ Stamps the configured cooldown on `contractId` and schedules the `reset` callbac
 exports.cc_heistcontracts:StartContract('fleeca_heist', { group = 'test', location = { id = 'pinkcage' } })
 ```
 
-This is the old-shape entry — directly invokes a contract's entry point, bypassing the slot/purchase/VICE flow **and the cooldown gate**. It still works (the seed test commands `/heist:test` and `/heist:test2` use it), but new integrations should use the dashboard-driven slot flow.
+This is the old-shape entry — directly invokes a contract's entry point, bypassing the slot/purchase/VICE flow, the active-slot tracking, **and the cooldown gate**. It still works (the `/heist:test*` debug commands use it), but new integrations should use the dashboard-driven slot flow. A contract started this way has no active slot, so `FinishContract` will return `'not_active'` for the player.
 
-## Picking up cross-resource events
-
-A few server events are useful for cross-resource integration:
+## Cross-resource events
 
 | Event | When it fires | Use case |
 | --- | --- | --- |
-| `cc_heistcontracts:rotationChanged` | Server-local; fired right after the rotation re-rolls. | Notify a Discord webhook, refresh a separate UI, etc. |
+| `cc_heistcontracts:rotationChanged` | Server-local; fired right after a listing is added, removed, expired, or consumed. | Notify a Discord webhook, refresh a separate UI, etc. |
 
 For player-action wiring (purchases, transfers, training unlocks) you generally don't need to listen — the slot-fill / VICE debit is already routed through `Profile`, which you can read at any time via `_G.HeistProfile.GetBySrc(src)`.

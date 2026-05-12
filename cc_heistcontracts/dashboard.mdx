@@ -13,17 +13,17 @@ The dashboard is the player's window into everything in `cc_heistcontracts`. It 
     `client/main.lua` flips `isOpen`, sends a `{ action = 'open' }` NUI message, takes NUI focus, and fires `cc_heistcontracts:requestSync` to the server.
   </Step>
   <Step title="Server replies with a bootstrap payload">
-    Includes currency config, slot count, the player's profile, the active rotation, the marketplace catalog, the player's crew (if any), and the training catalog. Sent on `cc_heistcontracts:sync` with action `bootstrap`.
+    Includes currency config, slot count, the player's profile, the current marketplace listings, **the full contract registry** (so the UI can resolve owned-slot contract ids without re-fetching), the marketplace items catalog, the player's crew (if any), and the training catalog. Sent on `cc_heistcontracts:sync` with action `bootstrap`.
   </Step>
   <Step title="Dashboard requests an alias on first open">
     A new profile has `alias = NULL`. The dashboard refuses to render the rest of the UI until the player picks one. Server-side validation: 3–16 chars, must start with a letter, alphanumerics + underscore, case-insensitively unique across all profiles.
   </Step>
   <Step title="Dashboard renders">
-    Tabs: Contracts, Slots, Marketplace, Training, Crew, Ledger.
+    Pages: Contracts (slots + marketplace), Marketplace (items), Profile (stats + ledger), Crew, Training.
   </Step>
 </Steps>
 
-The server adds `src` to a `viewers` set on bootstrap and removes it on close. **Rotation broadcasts only target current viewers** — a player whose dashboard is closed won't receive rotation updates until they reopen.
+The server adds `src` to a `viewers` set on bootstrap and removes it on close. **Rotation broadcasts only target current viewers** — a player whose dashboard is closed won't receive listing updates until they reopen.
 
 ## Sync protocol
 
@@ -31,15 +31,15 @@ All server → client traffic flows over a single net event, `cc_heistcontracts:
 
 | Action | Payload | Meaning |
 | --- | --- | --- |
-| `bootstrap` | full state | Sent once when the dashboard opens. |
-| `profile` | profile only | Sent after any mutation (purchase, discard, transfer, training unlock, alias change, XP grant). |
-| `rotation` | rotation snapshot | Broadcast to viewers when the rotation re-rolls. |
+| `bootstrap` | full state | Sent once when the dashboard opens. Includes the registry snapshot. |
+| `profile` | profile only | Sent after any mutation (purchase, discard, transfer, training unlock, alias change, XP grant, finish, abandon). |
+| `rotation` | listings snapshot | Broadcast to viewers when listings are added, removed, expired, or consumed. |
 | `crew` | crew snapshot or `nil` | When the player joins, leaves, or their crew is disbanded. |
 | `transferInvite` | invite | A different player offered to transfer a contract slot. |
 | `crewInvite` | invite | A different player invited the player to a crew. |
 | `pickup` | pickup payload | Marketplace checkout completed; the dashboard switches to the pickup banner. |
 | `pickupCleared` | `{ pickupId }` | Pickup was claimed (or cleared by another path). |
-| `toast` | `{ kind, message }` | Inline toast shown by the dashboard. `kind` is `success`, `error`, or `info`. |
+| `toast` | `{ kind, message }` | Inline toast shown by the dashboard. `kind` is `success`, `error`, `warn`, or `info`. |
 
 ### Profile payload shape
 
@@ -52,14 +52,16 @@ What the dashboard receives on every `profile` push:
   "characterName": "John Doe",
   "level": 7,
   "xp": 5400,
-  "xpInLevel": 1000,    // XP accumulated within the current level
-  "xpForLevel": 3600,   // XP span needed to finish the current level
+  "xpInLevel": 1000,        // XP accumulated within the current level
+  "xpForLevel": 3600,       // XP span needed to finish the current level
   "viceBalance": 12500,
   "slots": [
     { "contractId": "fleeca_heist", "acquiredAt": 1730000000 },
     null,
     null
   ],
+  "activeSlot": 1,          // 1-based index of the currently-running heist, or null
+  "activeStartedAt": 1730000123,  // os.time() when the heist started, or null
   "stats": {
     "completed": 14,
     "failed": 2,
@@ -76,6 +78,51 @@ What the dashboard receives on every `profile` push:
 
 `xpInLevel` and `xpForLevel` are computed server-side via `Profile.LevelProgress`, so the dashboard's level ring stays in sync with the configured curve without duplicating the math client-side.
 
+`activeSlot` is the source of truth for which heist (if any) the player is currently running. The dashboard uses it to:
+- Show a red-bordered "in progress" badge on the active slot card.
+- Disable the Start, Discard, and Transfer buttons on every slot.
+- Disable crew invites on the Crew page.
+- Render the active-heist panel on the contract detail view with a Give Up button.
+
+`activeSlot` lives **in memory only** on the server — a server restart clears it for every online player.
+
+### Rotation payload shape
+
+```jsonc
+{
+  "listings": [
+    {
+      "listingId": "l_42",
+      "listedAt": 1730000000000,
+      "contract": { /* full normalized contract data */ }
+    },
+    {
+      "listingId": "l_43",
+      "listedAt": 1730000180000,
+      "contract": { /* ... */ }
+    }
+  ],
+  "cooldowns": {
+    "paleto_bank": 1730003600   // unix seconds when cooldown ends
+  }
+}
+```
+
+Each listing is a unique instance with its own `listingId`. The same contract template can appear multiple times in `listings` if the marketplace happens to roll it more than once before any are bought.
+
+### Contracts payload (bootstrap only)
+
+The bootstrap payload also includes a `contracts` map — every registered contract keyed by id:
+
+```jsonc
+{
+  "fleeca_heist": { "id": "fleeca_heist", "title": "Fleeca Branch Heist", /* ... */ },
+  "paleto_bank":  { "id": "paleto_bank", "title": "Paleto Bank Score", /* ... */ }
+}
+```
+
+The dashboard uses this to resolve owned-slot contract ids back to their full data without depending on the listings array (since a contract you own isn't in the listings).
+
 ## Client → server actions
 
 Every interactive control on the dashboard triggers a NUI callback that bridges to a net event. They're all in `client/main.lua`:
@@ -84,23 +131,62 @@ Every interactive control on the dashboard triggers a NUI callback that bridges 
 | --- | --- | --- |
 | `close` | (none) | Clears NUI focus. |
 | `setAlias` | `cc_heistcontracts:setAlias` | First-open alias picker. Server validates and pushes a `profile` on success. |
-| `buyContract` | `cc_heistcontracts:buyContract` | Purchase a rotation contract into a slot. |
+| `buyContract` | `cc_heistcontracts:buyContract` | Purchase a marketplace listing into a slot. Payload is `{ listingId }`. |
 | `startContract` | `cc_heistcontracts:startContract` | Start a slot — invokes the registered `entry_point`. Closes the dashboard automatically. |
-| `discardContract` | `cc_heistcontracts:discardContract` | Empty a slot. No refund. |
-| `transferContract` | `cc_heistcontracts:transferContract` | Send a contract slot to another player. The recipient gets a `transferInvite`. |
+| `discardContract` | `cc_heistcontracts:discardContract` | Empty a slot. No refund. Refused if the slot is currently active. |
+| `abandonContract` | `cc_heistcontracts:abandonContract` | Give up the player's active heist. Calls `CancelHeist` on the owning heist resource if available. |
+| `transferContract` | `cc_heistcontracts:transferContract` | Send a contract slot to another player. The recipient gets a `transferInvite`. Refused if the slot is active. |
 | `transferResponse` | `cc_heistcontracts:transferResponse` | Accept/decline an inbound transfer. |
 | `marketplaceCheckout` | `cc_heistcontracts:marketplaceCheckout` | Pay VICE, get back a pickup payload. |
 | `pickupSetGps` | (none, client-only) | `SetNewWaypoint` to the active pickup's door. |
-| `crewInvite` / `crewInviteResponse` / `crewLeave` | matching `cc_heistcontracts:crew*` | Wraps `cc_lib.Groups`. |
+| `crewInvite` / `crewInviteResponse` / `crewLeave` | matching `cc_heistcontracts:crew*` | Wraps `cc_lib.Groups`. `crewInvite` is refused server-side while a heist is active. |
 | `trainingUnlock` / `trainingUnlockMinigame` / `trainingStart` | matching `cc_heistcontracts:training*` | Training sandbox. |
 | `nearbyPlayers` | (client-only) | Returns server ids + names within 50 m. Used by the transfer / crew invite target picker. |
+
+### Error toasts
+
+Buy and start failures surface as toasts with friendly messages. The mappings:
+
+| Error code | Message |
+| --- | --- |
+| `unknown_listing` | "This listing is no longer available" |
+| `unknown_contract` | "Unknown contract" |
+| `no_profile` | "Profile not loaded" |
+| `level_too_low` | "Your level is too low" |
+| `slots_full` | "All your slots are full" |
+| `insufficient_vice` | "Not enough VICE" |
+| `empty_slot` | "That slot is empty" |
+| `on_cooldown` | "This contract is on cooldown" |
+| `already_in_heist` | "You are already in a heist" |
+| `entry_point_error` | "The heist failed to start" |
+
+Any unmapped code falls back to `Purchase failed: <code>` or `Could not start: <code>` so unfamiliar errors are still visible.
+
+## Active heist UX
+
+When `profile.activeSlot` is set, the dashboard switches into "in-progress" mode:
+
+- The active slot's card on the Contracts page has a thick red border and an "In progress" badge.
+- The other slots' Start buttons are disabled with the tooltip "Already in a heist".
+- The active slot itself can't be Discarded or Transferred — those buttons are disabled with explanatory tooltips.
+- The sidebar's "No active heist" widget swaps to show the active contract's title with a red border, clickable to jump to its detail view.
+- The detail view shows an `ActiveHeistPanel` instead of Start/Transfer/Discard — it includes the elapsed time and a "Give up heist" button.
+
+The Give Up button is a two-stage confirm: first click arms it ("Click again to confirm"), second click commits. The arm state auto-resets after 4 seconds.
+
+## Post-action redirects
+
+The dashboard navigates automatically after two specific actions, watching for the post-mutation profile state:
+
+- **After buy**: when the bought contract appears in `profile.slots`, navigates to that slot's detail page (so the player sees the Start/Transfer/Discard panel instead of the now-gone listing).
+- **After give up**: when `profile.activeSlot` becomes null, navigates back to `/contracts`.
+
+Both redirects have a 3-second timeout. If the expected state change never happens (e.g. server rejected the action), the dashboard stays where it is and shows whatever error toast came back.
 
 ## Alias rules
 
 ```lua
-function validateAliasFormat(alias)
-    -- length 3..16, must match ^[A-Za-z][A-Za-z0-9_]+$
-end
+-- length 3..16, must match ^[A-Za-z][A-Za-z0-9_]+$
 ```
 
 | Error code | Meaning |
@@ -116,5 +202,5 @@ The error code is returned to the client via the `cc_heistcontracts:aliasResult`
 
 ## Cleanup
 
-- **Player drops** — server clears them from `viewers`, removes them from any crew (disbanding if leader), flushes their profile, evicts from cache.
+- **Player drops** — server clears them from `viewers`, removes them from any crew (disbanding if leader), flushes their profile, evicts from cache. Their `activeSlot` is dropped with the cache; on reconnect they can re-start the slot.
 - **Resource stops** — client clears NUI focus; server flushes every cached profile.

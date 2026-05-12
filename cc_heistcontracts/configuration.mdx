@@ -19,19 +19,45 @@ config.currency = {
 
 Display name for the built-in currency. Shown everywhere VICE is referenced in the dashboard.
 
-### Rotation
+### Marketplace generation
 
 ```lua
 config.rotation = {
-    intervalMs = 20 * 60 * 1000, -- 20 minutes
-    size = 5,
+    dripIntervalMs        = 3 * 60 * 1000,    -- 3 min: how often a new listing is added
+    maxListings           = 9,                -- generation pauses once we hit this many
+    listingExpiryMs       = 60 * 60 * 1000,   -- 60 min: listings older than this get cleared
+    expirySweepIntervalMs = 5 * 60 * 1000,    -- 5 min: how often we sweep for expired listings
 }
 ```
 
+The marketplace fills over time instead of re-rolling in batches. Every `dripIntervalMs`, a new listing is added — picked from the registry weighted by each contract's `weight` field. Generation pauses once the marketplace hits `maxListings`. Listings older than `listingExpiryMs` are removed by a background sweep that runs every `expirySweepIntervalMs`.
+
 | Field | Effect |
 | --- | --- |
-| `intervalMs` | How often the marketplace re-rolls. The first roll happens 3 seconds after server start (after dependencies have loaded), then every `intervalMs` thereafter. |
-| `size` | How many contracts to expose at once. Clamped to `min(size, totalRegisteredContracts)` so a small registry doesn't break the roll. |
+| `dripIntervalMs` | How often the marketplace tries to add a new listing. Skipped if we're already at `maxListings`. |
+| `maxListings` | Cap on simultaneous listings. Generation resumes when one is bought or expires. |
+| `listingExpiryMs` | A listing is removed if it sits unbought longer than this. |
+| `expirySweepIntervalMs` | How often the expiry sweep runs. Doesn't need to match `listingExpiryMs` — a listing is at most one sweep interval over-age. |
+
+<Note>
+  On a fresh boot the marketplace starts **empty** and the first listing appears after `dripIntervalMs`. There's no initial fill — by design, so a server restart doesn't wipe and re-spawn a fresh catalog at the same time. Lower the interval temporarily if you need listings now for testing.
+</Note>
+
+#### Contract rarity (per-contract weight)
+
+Each contract template can declare an optional `weight` field (default `1.0`) controlling how likely it is to be picked when the marketplace adds a new listing. Higher weight = more common, lower = rarer.
+
+```lua
+exports.cc_heistcontracts:RegisterContract({
+    id = 'paleto_bank',
+    -- ...
+    weight = 0.25,    -- about a quarter as likely as a default-weight contract
+}, entryPoint)
+```
+
+Weights are relative, not probabilities. If you register three contracts with weights `1.0`, `0.5`, `0.5`, the first is picked 50% of the time and the others 25% each.
+
+The same contract can appear as multiple listings simultaneously — each listing is its own unique instance with its own `listingId`. Buying a Fleeca doesn't stop another Fleeca listing from existing or being bought by someone else.
 
 ### Slots
 

@@ -3,6 +3,31 @@ title: "Changelog"
 description: "Release notes for every CC Scripts resource — newest at the top."
 ---
 
+<Update label="2026-05-12" description="cc_heistcontracts v1.1.0" tags={["cc_heistcontracts", "Release"]}>
+  ## Drip marketplace, active heists, give-up flow
+
+  ### Marketplace
+  - Replaced batched rotation (`intervalMs` + `size`) with a **drip system**. New listings appear one at a time on `config.rotation.dripIntervalMs`, up to `maxListings`. Old listings get culled after `listingExpiryMs`. See [Configuration](/cc_heistcontracts/configuration#marketplace-generation).
+  - Added **per-contract `weight`** for biased random picks. Higher weight = more common in the marketplace drip.
+  - **Each listing is now a unique instance** with its own `listingId`. The same contract template can be listed multiple times in parallel.
+
+  ### Active heist tracking
+  - Starting a slot no longer consumes it — it marks the slot **active**. The slot is consumed when the heist ends.
+  - One heist at a time per player. The dashboard disables Start/Discard/Transfer on the other slots, and crew invites, while a heist is active.
+  - The dashboard renders an `ActiveHeistPanel` for the running slot, with an elapsed-time counter and a two-stage **Give Up** button.
+
+  ### New exports
+  - `exports.cc_heistcontracts:FinishContract(src, success)` — heist resources call this for every group member when their heist ends. Awards VICE + XP from the contract's `reward` table on success, records stats. See [Registering contracts](/cc_heistcontracts/registering-contracts#finishcontract).
+  - `exports('CancelHeist', function(src))` — heist resources implement this on their own resource. cc_heistcontracts calls it when a player gives up so the run can be torn down for the whole group. See [Registering contracts](/cc_heistcontracts/registering-contracts#cancelheist-recommended).
+
+  ### Other
+  - Friendlier toast messages for buy / start failures.
+  - Random location pick when a heist has multiple `locations` and the caller doesn't specify one.
+  - Bootstrap payload now includes a `contracts` map (full registry) so the UI can resolve owned-slot contract ids.
+  - Removed the seed test contracts from `server/main.lua` — bundled heist resources (Fleeca, Paleto, Pacific) register themselves.
+  - `/heist:test3` added for the Pacific heist.
+</Update>
+
 <Update label="2026-05-02" description="docs.cc-scripts.com" tags={["Docs"]}>
   ## Documentation site launched
 

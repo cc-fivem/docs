@@ -1,10 +1,10 @@
 ---
 title: "Admin commands"
-description: "Console + ACE-gated commands for granting XP, testing contracts, and seeding data."
+description: "Console + ACE-gated commands for granting XP and triggering test runs."
 icon: 'shield'
 ---
 
-`cc_heistcontracts` ships three console commands. Two are debug-only (un-restricted) and one is ACE-gated.
+`cc_heistcontracts` ships four console commands. Three are debug-only (un-restricted) and one is ACE-gated.
 
 ## `/heist:grantxp <alias> <amount>`
 
@@ -45,15 +45,21 @@ If the alias doesn't exist:
 
 Other failure codes: `invalid_amount` (zero/negative), `db` (UPDATE didn't affect any rows).
 
-## `/heist:test` and `/heist:test2`
+## `/heist:test`, `/heist:test2`, `/heist:test3`
 
-Both are **un-restricted** dev commands that exist to exercise the legacy `StartContract` path against the seed contracts. They:
+Three **un-restricted** dev commands that exercise the legacy `StartContract` path against the bundled heists. They each:
 
 1. Create a `cc_lib.Groups` group named `'test'` with the caller as leader.
 2. Optionally add a second player as a member: `/heist:test 5` adds source 5 to the group.
-3. Call `StartContract('Paleto Heist', { group = 'test', location = { id = 'pinkcage' } })` (`/heist:test`) or `StartContract('Fleeca Heist', ...)` (`/heist:test2`).
+3. Call `StartContract` directly — bypassing the slot/purchase/VICE flow and the active-slot tracking.
 
-The contract names hard-coded into the commands match the seed registrations in `server/main.lua`. If you remove the seeds, both commands will print `unknown contract` and do nothing.
+| Command | Calls |
+| --- | --- |
+| `/heist:test` | `StartContract('Paleto Heist', { group = 'test', location = { id = 'pinkcage' } })` |
+| `/heist:test2` | `StartContract('Fleeca Heist', { group = 'test', location = { id = 'pinkcage' } })` |
+| `/heist:test3` | `StartContract('Pacific Heist', { group = 'test', location = { id = 'pinkcage' } })` |
+
+These work as long as the named heist resources are registered. If you don't ship one of them, the matching test command will print `unknown contract` and do nothing.
 
 <Warning>
   These commands are not ACE-restricted in the shipped resource. Anyone on the server can run them. **Either restrict or remove them before going to production.**
@@ -68,23 +74,7 @@ RegisterCommand('heist:test', function(source)
 end, true)
 ```
 
-## Removing the seed contracts
-
-`server/main.lua` registers two seed contracts (`fleeca_heist`, `paleto_bank`) inside a delayed thread so a fresh server has something to display. Once your real heist resources call `RegisterContract`, you can delete the seed block:
-
-```lua
--- DELETE this whole function and the CreateThread that calls it:
-local function seedTestContracts()
-    if Registry.Get('fleeca_heist') then return end
-    RegisterContract({ ... }, function(...) end)
-    RegisterContract({ ... }, function(...) end)
-end
-
-CreateThread(function()
-    Wait(1500)
-    seedTestContracts()
-end)
-```
+Note that `StartContract` bypasses the entire slot system — the player gets the heist's `entry_point` called directly without `activeSlot` being set, so `FinishContract` will return `'not_active'` for them. That's fine for one-off testing, but don't wire production gameplay through it.
 
 ## Resetting a profile (manual)
 
@@ -104,12 +94,26 @@ UPDATE heist_profiles SET level = 1, xp = 0 WHERE citizenid = 'ABC12345';
 
 Cache will be stale until they reconnect — alternatively, push them off the server so `playerDropped` evicts them, or restart `cc_heistcontracts` to flush the entire cache.
 
+## Recovering a stuck active slot
+
+If a heist fails to call `FinishContract` (resource crashed, third-party heist doesn't integrate cleanly), a player can end up with a permanently "active" slot they can't start or discard. Since `activeSlot` is in-memory only, the easiest fixes are:
+
+- **Have the player rejoin** — `playerDropped` evicts their profile from the cache, and on reconnect they come back with `activeSlot = nil`.
+- **Restart `cc_heistcontracts`** — clears the in-memory cache for every player. Heavy-handed; only do this if multiple players are stuck.
+- **Use the dashboard's Give Up button** — if the heist resource doesn't implement `CancelHeist`, the give-up path falls back to freeing just the abandoner's slot locally. The player sees a toast explaining this.
+
 ## Debug logging
 
 `config.debug = true` in `shared/config.lua` toggles `[DEBUG]` lines from `utils.dprint`. Default is on. Useful lines you'll see:
 
-- `[DEBUG] rotation rolled: N contracts, expires in <ms>ms` — every rotation roll.
-- `[DEBUG] entry_point error for <id>: <msg>` — when a contract's entry point throws on Start.
+- `[DEBUG] listing added: <contractId> (N/max)` — every time the drip thread successfully adds a listing.
+- `[DEBUG] listings expired: N removed, M remain` — every expiry sweep that finds something to cull.
+- `[DEBUG] entry_point error for <id>: <msg>` — when a contract's entry point throws on Start. The active-slot mark is rolled back when this happens.
+- `[DEBUG] reset error for <id>: <msg>` — when a contract's cooldown `reset` callback throws.
 - `[DEBUG] Profile.GetBySrc: no citizenid for src <n>` — citizenid lookup failed (usually means the player isn't fully loaded into the core yet).
+
+Server prints (not gated by `debug`) also include:
+
+- `[cc_heistcontracts] CancelHeist threw for <resource>: <msg>` — a heist resource's `CancelHeist` export raised an exception during a give-up flow.
 
 For production, flip `config.debug = false`. Server prints only happen on actual failures after that.

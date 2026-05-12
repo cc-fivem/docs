@@ -7,7 +7,7 @@ icon: 'rocket'
 ## Requirements
 
 - A FiveM server running [ox_lib](https://github.com/overextended/ox_lib) and [oxmysql](https://github.com/overextended/oxmysql).
-- A working `cc_lib` resource (provides Core, Groups, Inventory, and Target wrappers).
+- A working `cc_lib` resource (provides Core, Groups, Inventory, Target, and TaskUI wrappers).
 - Optional: [cc_minigames](/cc_minigames/index) if you want the default training sandbox entries to work.
 
 ## Steps
@@ -37,12 +37,24 @@ icon: 'rocket'
     ensure cc_minigames     # optional, only if training entries reference it
     ensure cc_heistcontracts
     ```
+
+    Heist resources that integrate with `cc_heistcontracts` should declare it as a dependency in their `fxmanifest.lua` so FXServer starts them in the right order:
+
+    ```lua
+    dependencies {
+        'ox_lib',
+        'cc_heistcontracts',
+        'cc_lib',
+    }
+    ```
+
+    Without this, a heist resource that boots before `cc_heistcontracts` will hit `SCRIPT ERROR: No such export RegisterContract in resource cc_heistcontracts`.
   </Step>
   <Step title="Verify in-game">
-    Join the server and press **F6** (or run `/heist`). The dashboard should open, prompt you to pick an alias, and then show two seed contracts — **Fleeca Branch Heist** and **Paleto Bank Score** — in the rotation. Those seeds live in `server/main.lua` and exist purely so you have something to look at on a fresh install.
+    Join the server and press **F6** (or run `/heist`). The dashboard should open and prompt you to pick an alias. The marketplace starts empty on a fresh boot — listings drip in one at a time on the configured interval (3 minutes by default), so the first contract appears after the first interval has elapsed.
 
     <Tip>
-      To remove the seed contracts, delete the `seedTestContracts()` block in `server/main.lua` (or just leave them; once your real heist resources call `RegisterContract`, the rotation has plenty to draw from).
+      Want listings immediately for testing? Lower `config.rotation.dripIntervalMs` in `shared/config.lua` to something like `5 * 1000` (5 seconds) and restart the resource. Don't forget to put it back before production.
     </Tip>
   </Step>
 </Steps>
@@ -71,6 +83,10 @@ heist_profiles (
 ```
 
 A new row is inserted on the first dashboard open for each `citizenid`. Profiles are cached in memory while the player is online and flushed every 30 seconds, on player drop, on resource stop, and on alias change.
+
+<Note>
+  Active-heist state (which slot is currently running, when it started) is **in-memory only** — it doesn't live in the database. A server restart wipes the in-flight state of every player, on purpose: the heist's world state is reset by the restart too, so a leftover "active" flag would lock a player out of an otherwise-fresh contract.
+</Note>
 
 ## Building the dashboard UI from source
 
