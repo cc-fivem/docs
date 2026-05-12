@@ -27,6 +27,16 @@ exports.cc_heistcontracts:RegisterContract({
     -- Start your heist. runtimeData carries:
     --   contractId, acquiredAt, startedBy, slotIndex, group, location?
     exports.cool_bank:Start({ group = runtimeData.group, location = runtimeData.location })
+
+    -- Listen for the heist's completion event. Registered inside entry_point
+    -- so the closure can match against this run's group, and removed after
+    -- it fires so handlers don't stack across heists.
+    local handler
+    handler = AddEventHandler('cool_bank:complete', function(group, success)
+        if group ~= runtimeData.group then return end
+        RemoveEventHandler(handler)
+        exports.cc_heistcontracts:FinishHeist(group, success)
+    end)
 end, {
     -- Optional. Fires when a player presses Give Up on the dashboard.
     cancel = function(ctx)
@@ -35,14 +45,18 @@ end, {
         exports.cool_bank:Abort(ctx.group)
     end,
 })
-
--- Then, when your heist's completion event fires:
-AddEventHandler('cool_bank:complete', function(group, success)
-    exports.cc_heistcontracts:FinishHeist(group, success)
-end)
 ```
 
-That's the whole integration. Three exports total: `RegisterContract` (once), `FinishHeist` (whenever the heist ends), and optionally `ApplyCooldown` if the contract has a `cooldown` set.
+That's the whole integration. Three exports total: `RegisterContract` (once), `FinishHeist` (whenever the heist ends, fired from inside the handler above), and optionally `ApplyCooldown` if the contract has a `cooldown` set.
+
+<Note>
+  Why register the completion handler **inside `entry_point`** rather than at the top of the file?
+
+  - It only listens while a heist is actually running.
+  - The handler closes over `runtimeData.group`, so it knows which run the event belongs to. A top-level handler would have to figure that out from the event payload alone.
+
+  Removing the handler on first fire (`RemoveEventHandler(handler)`) prevents the listener list from growing every time the heist starts. The wider pattern is "one handler per run, scoped to that run."
+</Note>
 
 ## The three exports
 
@@ -292,6 +306,15 @@ CreateThread(function()
     }, function(runtimeData)
         -- Start the escrowed heist however its docs tell you to.
         exports.cool_bank:Start({ group = runtimeData.group })
+
+        -- Hook the heist's completion event for this run, then drop the
+        -- handler once it fires so listeners don't pile up across heists.
+        local handler
+        handler = AddEventHandler('cool_bank:complete', function(group, success)
+            if group ~= runtimeData.group then return end
+            RemoveEventHandler(handler)
+            exports.cc_heistcontracts:FinishHeist(group, success)
+        end)
     end, {
         cancel = function(ctx)
             -- Call whatever abort/cancel the escrowed heist exposes.
@@ -300,11 +323,6 @@ CreateThread(function()
             end
         end,
     })
-end)
-
--- Hook the escrowed heist's completion event.
-AddEventHandler('cool_bank:complete', function(group, success)
-    exports.cc_heistcontracts:FinishHeist(group, success)
 end)
 ```
 

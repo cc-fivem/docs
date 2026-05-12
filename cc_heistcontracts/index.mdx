@@ -36,6 +36,15 @@ exports.cc_heistcontracts:RegisterContract({
 }, function(runtimeData)
     -- runtimeData = { contractId, acquiredAt, startedBy, slotIndex, group, location? }
     exports.your_heist:Start({ group = runtimeData.group, location = runtimeData.location })
+
+    -- Listen for your heist's completion event. Scoped to this run via the
+    -- group match, and removed after it fires so we don't stack handlers.
+    local handler
+    handler = AddEventHandler('your_heist:complete', function(group, success)
+        if group ~= runtimeData.group then return end
+        RemoveEventHandler(handler)
+        exports.cc_heistcontracts:FinishHeist(group, success)
+    end)
 end, {
     cancel = function(ctx)
         -- ctx = { src, group, contractId, slotIndex }
@@ -43,11 +52,6 @@ end, {
         exports.your_heist:Abort(ctx.group)
     end,
 })
-
--- Then, when your heist's completion event fires:
-AddEventHandler('your_heist:complete', function(group, success)
-    exports.cc_heistcontracts:FinishHeist(group, success)
-end)
 ```
 
 That's it. VICE and XP rewards are credited automatically on success. Cash and inventory rewards remain the heist's responsibility — `cc_heistcontracts` doesn't touch player money or inventory directly. The `cancel` callback is optional; if you omit it, the dashboard hides the Give Up button.
