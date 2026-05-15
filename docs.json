@@ -27,6 +27,15 @@
         "tab": "Guides",
         "groups": [
           {
+            "group": "Library (cc_lib)",
+            "pages": [
+              "cc_lib/index",
+              "cc_lib/installation",
+              "cc_lib/taskui",
+              "cc_lib/modules"
+            ]
+          },
+          {
             "group": "Minigames",
             "pages": [
               "cc_minigames/index",

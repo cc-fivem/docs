@@ -1,0 +1,138 @@
+---
+title: "Module reference"
+description: "Every adapter module exposed by cc.GetLib() — function signatures and what they map onto."
+icon: 'book'
+---
+
+Every module below is reached through `local cc = exports.cc_lib:GetLib()`. The shape on the client differs from the server — modules listed under **Server** are only available from server scripts, and vice versa.
+
+If a module's backing resource isn't running, its slot is **absent** from the returned table. Either fail fast or guard with `if cc.Inventory then ... end`.
+
+## Server modules
+
+### `cc.Core`
+
+Backing resource: **`qbx_core`**.
+
+| Function | Signature | Notes |
+| --- | --- | --- |
+| `AddMoney` | `(src, account, amount, reason)` | Forwarded to `qbx_core:AddMoney`. |
+| `RemoveMoney` | `(src, account, amount, reason)` | Forwarded to `qbx_core:RemoveMoney`. |
+| `GetMoney` | `(src, account)` → `number` | Returns `0` if the player isn't loaded. |
+| `GetPlayer` | `(src)` → player object | Raw qbx player object. |
+| `GetCitizenId` | `(src)` → `string \| nil` | Convenience for `player.PlayerData.citizenid`. |
+| `GetName` | `(src)` → `string` | `"firstname lastname"`. Returns `"Unknown"` if the player isn't loaded. |
+| `CreateUseableItem` | `(itemName, callback)` | Registers a useable item callback. |
+
+### `cc.Inventory`
+
+Backing resource: **`ox_inventory`**. A partial `qb-inventory` adapter exists but currently still forwards most reads to `ox_inventory`; treat ox_inventory as the supported path.
+
+| Function | Signature | Returns |
+| --- | --- | --- |
+| `AddItem` | `(inv, item, amount, metadata)` | `boolean` |
+| `RemoveItem` | `(inv, item, amount, metadata)` | `boolean` |
+| `GetItemCount` | `(inv, item, metadata)` | `number` |
+| `GetSlots` | `(inv, item, metadata)` | `slot[]` (`{}` if none) |
+| `HasItem` | `(inv, item, amount, metadata)` | `boolean` |
+| `SetMetadata` | `(inv, slot, metadata)` | `boolean` |
+
+### `cc.Groups`
+
+In-house module — no backing resource needed.
+
+A **Group** is a named bucket of player sources with one designated leader. Used by `cc_heistcontracts`' crew layer.
+
+| Function | Signature | Returns |
+| --- | --- | --- |
+| `CreateGroup` | `(name, leader)` | the group object |
+| `RemoveGroup` | `(name)` | — |
+| `GetGroup` | `(name)` | group object or `nil` |
+| `AddMember` | `(name, member)` | — |
+| `RemoveMember` | `(name, member)` | — |
+| `GetMembers` | `(name)` | `{ [src] = true, ... }` |
+| `TriggerClientEvent` | `(name, event, ...)` | Fires the event to every member. |
+
+Unknown group names log a warning to the server console and return `nil` instead of crashing — useful when reacting to lifecycle events that may race with cleanup.
+
+### `cc.Doorlock`
+
+Backing resource: **`ox_doorlock`**.
+
+| Function | Signature | Returns |
+| --- | --- | --- |
+| `SetLocked` | `(src, doorId, locked)` | `boolean` |
+
+`doorId` is the registered **name** of the door in ox_doorlock. Unknown names log a warning and return `false`.
+
+### `cc.Notification`
+
+Backing resource: **`ox_lib`**.
+
+| Function | Signature | Notes |
+| --- | --- | --- |
+| `Notify` | `(src, data)` | Full `ox_lib:notify` data passthrough. |
+| `Info` | `(src, msg)` | Shorthand for `{ description = msg }`. |
+| `Error` | `(src, msg)` | Shorthand for `{ description = msg, type = 'error' }`. |
+
+### `cc.VehicleKeys`
+
+Backing resource: **`qbx_vehiclekeys`**.
+
+| Function | Signature | Notes |
+| --- | --- | --- |
+| `GiveKeys` | `(src, vehicle, skipNotification)` | `vehicle` is a server-side entity handle. |
+| `GiveKeysByNetId` | `(src, netId, skipNotification)` | Use this for client-spawned vehicles where the server only has the netId. Returns `false` if the netId doesn't resolve. |
+| `HasKeys` | `(src, vehicle)` | `boolean` |
+| `RemoveKeys` | `(src, vehicle)` | — |
+
+### `cc.TaskUI`
+
+In-house module — see the dedicated [TaskUI page](/cc_lib/taskui) for the full surface.
+
+## Client modules
+
+### `cc.Target`
+
+Backing resource: **`ox_target`**.
+
+| Function | Signature | Notes |
+| --- | --- | --- |
+| `AddSphereZone` | `(parameters)` → zone id | Wraps `ox_target:addSphereZone`. |
+| `AddEntity` | `(netIds, options)` → zone id | For one or more networked entities by netId. |
+| `AddLocalEntity` | `(entities, options)` → zone id | For one or more client-local entity handles. |
+| `RemoveLocalEntity` | `(entities, options)` | |
+| `RemoveZone` | `(...)` | Forwarded to `ox_target:removeZone`. |
+
+### `cc.Interface`
+
+Backing resource: **`ox_lib`**.
+
+| Function | Signature | Notes |
+| --- | --- | --- |
+| `Input` | `(...)` | Wraps `lib.inputDialog`. |
+| `RegisterContext` | `(data)` | Wraps `lib.registerContext`. |
+| `ShowContext` | `(id)` | Wraps `lib.showContext`. |
+| `HideContext` | `(...)` | Wraps `lib.hideContext`. |
+| `Alert` | `(data)` | Wraps `lib.alertDialog`. |
+
+### `cc.Inventory`
+
+Backing resource: **`ox_inventory`**.
+
+| Function | Signature | Notes |
+| --- | --- | --- |
+| `DisplayMetadata` | `(data)` | Wraps `ox_inventory:displayMetadata` for showing custom item-metadata fields. |
+
+### `cc.VehicleKeys`
+
+Backing resource: **`qbx_vehiclekeys`**.
+
+| Function | Signature | Notes |
+| --- | --- | --- |
+| `GiveKeys` | `(vehicle)` → `boolean` | Resolves netId and routes through the server callback `qbx_vehiclekeys:server:giveKeys`. |
+| `HasKeys` | `(vehicle)` → `boolean` | Local read. |
+
+### `cc.TaskUI`
+
+The TaskUI is server-owned — clients receive state via NUI messages and don't get a direct API. See [TaskUI](/cc_lib/taskui).

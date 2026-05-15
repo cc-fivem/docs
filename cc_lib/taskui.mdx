@@ -1,0 +1,266 @@
+---
+title: "TaskUI"
+description: "Server-authoritative task list NUI — master timer, status chips, counters, and per-task countdowns."
+icon: 'list-check'
+---
+
+`cc_lib.TaskUI` is the on-screen task list that every CC Scripts heist uses to show its objectives. Lists are owned **server-side**: state lives on the server, viewers (players) subscribe via `Show`, and updates broadcast to every viewer.
+
+```lua
+local cc = exports.cc_lib:GetLib()
+
+local listId = cc.TaskUI.Create({
+    title       = 'Fleeca Heist',
+    description = 'Crack the safe without triggering the alarm.',
+    maxTime     = 1800, -- seconds; master countdown
+    position    = 'right',
+    objectives  = {
+        { id = 'hack_box',       text = 'Hack the electrical box' },
+        { id = 'hack_computers', text = 'Hack the computers',
+          counter = { current = 4, total = 4 } },
+        { id = 'open_vault',     text = 'Open the vault door' },
+    },
+    onTimerEnd     = function(id) print('time up', id) end,
+    onTaskTimerEnd = function(id, taskId) print('task timer up', taskId) end,
+    onComplete     = function(id) print('every task complete', id) end,
+})
+
+cc.TaskUI.Show(listId, source)
+```
+
+`Create` only allocates the list and starts its master timer. Players don't see anything until `Show` adds them as viewers.
+
+## Concepts
+
+<Columns cols={2}>
+  <Card title="Server-owned state" icon="server">
+    Every list and every objective lives on the server. Clients only receive deltas. On respawn the client requests a full re-sync automatically.
+  </Card>
+  <Card title="One active task" icon="play">
+    The list renders the first non-`complete` objective as the **active** task. Counter chips and timer chips are only visible on the active task — they're hidden on pending/complete/failed tasks even if their underlying value is non-null.
+  </Card>
+  <Card title="Per-task chips" icon="tag">
+    Each task can carry a **counter** (`{ current, total }`) and/or a **timer** (`{ timeLeft }`). Both render as small chips next to the task text. Counters and timers are independent — a task can have one, both, or neither.
+  </Card>
+  <Card title="Boundaries are caller-defined" icon="route">
+    Expiry callbacks fire but don't auto-fail the task. Status, counter, and timer are all orthogonal — what they *mean* for the heist's flow is up to you.
+  </Card>
+</Columns>
+
+## Lifecycle
+
+```lua
+local id = cc.TaskUI.Create(data)   -- allocate + start master timer
+cc.TaskUI.Show(id, src)             -- subscribe a player
+cc.TaskUI.Hide(id, src)             -- unsubscribe (list still alive)
+cc.TaskUI.Destroy(id)               -- tear it all down for every viewer
+```
+
+`Create` accepts:
+
+| Field | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `title` | `string` | `''` | Header text. |
+| `description` | `string` | `''` | One-line description under the header. |
+| `position` | `'left' \| 'right'` | `'right'` | Which corner the list anchors to. |
+| `maxTime` | `number` (seconds) | `0` | If `> 0`, starts a 1 Hz master countdown. `0` means no master timer. |
+| `objectives` | `Objective[]` | `{}` | Initial task list. See [Objective shape](#objective-shape). |
+| `id` | `string` | auto | Optional fixed id. If a list with this id exists it's destroyed first. |
+| `onTimerEnd` | `function(id)` | — | Fires once when `maxTime` hits 0. |
+| `onTaskTimerEnd` | `function(id, taskId)` | — | Fires when any per-task timer hits 0. |
+| `onComplete` | `function(id)` | — | Fires once when every objective has `status == 'complete'`. |
+
+### Objective shape
+
+```lua
+{
+    id      = 'hack_box',           -- required, unique within the list
+    text    = 'Hack the electrical box',
+    status  = 'pending',            -- 'pending' | 'active' | 'complete' | 'failed'
+    counter = { current = 4, total = 4 }, -- optional chip; renders as the current value
+    timer   = { timeLeft = 25 },    -- optional countdown chip; ticks at 1 Hz server-side
+}
+```
+
+`status` is rarely set on the initial list — it defaults to `pending` and the renderer promotes the first pending one to `active` automatically.
+
+## Master timer
+
+The list-level countdown drawn in the header.
+
+| Function | What it does |
+| --- | --- |
+| `cc.TaskUI.SetTime(id, seconds)` | Set the master timer to a specific value. |
+| `cc.TaskUI.AddTime(id, seconds)` | Add seconds. Flashes a `+Ns` bubble next to the chip. |
+| `cc.TaskUI.DeductTime(id, seconds)` | Subtract seconds. Flashes a `-Ns` bubble. Floors at 0. |
+| `cc.TaskUI.GetTime(id)` | Returns the current remaining seconds. |
+
+The master timer ticks at 1 Hz on the server. When it hits 0 the `onTimerEnd` callback fires once and the timer stops — the list itself remains until you `Destroy` it.
+
+## Task status
+
+```lua
+cc.TaskUI.SetStatus(id, taskId, 'complete')   -- check it off
+cc.TaskUI.SetStatus(id, taskId, 'failed')     -- cross it out
+cc.TaskUI.SetStatus(id, taskId, 'pending')    -- back to neutral
+```
+
+Setting `'complete'` on the last remaining objective triggers `onComplete` once.
+
+## Counter chip
+
+A small numeric badge next to a task. Useful for "hack 4 computers" or "grab 6 bags" objectives.
+
+```lua
+cc.TaskUI.SetCounter(id, taskId, 4, 4)           -- start at 4/4
+cc.TaskUI.IncrementCounter(id, taskId, -1)       -- 3 left
+cc.TaskUI.SetCounter(id, taskId, nil)            -- remove the chip
+```
+
+The chip is hidden whenever `current <= 0`, regardless of `total`. Pair with `SetStatus(id, taskId, 'complete')` to advance to the next task.
+
+## Per-task timer chip
+
+A `MM:SS` countdown badge next to a task. The chip styling matches the counter chip — neutral background, no traffic-light coloring — so timers and counters sit side by side cleanly.
+
+<Note>
+A per-task timer is **only visible while its task is the active one**, the same way the counter chip is gated. The server ticks it regardless, so start the timer at the moment the task becomes active if you want the player to see the full countdown.
+</Note>
+
+### API
+
+```lua
+cc.TaskUI.SetTaskTimer(id, taskId, 25)     -- arm: 25s countdown, ticks 1 Hz
+cc.TaskUI.AddTaskTime(id, taskId, 10)      -- +10s
+cc.TaskUI.DeductTaskTime(id, taskId, 5)    -- -5s (floors at 0)
+cc.TaskUI.GetTaskTime(id, taskId)          -- returns remaining seconds or nil
+cc.TaskUI.ClearTaskTimer(id, taskId)       -- remove the chip without firing onTaskTimerEnd
+```
+
+Passing `0` or a negative number to `SetTaskTimer` is treated as a clear and behaves like `ClearTaskTimer`. Calling `SetTaskTimer` while a timer is already running atomically replaces it — the previous ticker thread exits via a generation token.
+
+### Expiry behavior
+
+When the chip ticks down to `0`:
+
+1. The chip disappears (broadcast as `timer = nil`).
+2. `onTaskTimerEnd(listId, taskId)` fires **once** on the server.
+3. The task's `status` is **not** auto-changed. Decide what expiry means in the callback.
+
+```lua
+cc.TaskUI.Create({
+    -- ...
+    onTaskTimerEnd = function(listId, taskId)
+        if taskId == 'open_vault' then
+            cc.TaskUI.SetStatus(listId, taskId, 'failed')
+            -- e.g. trip an alarm, deduct master time, force-fail the heist…
+        end
+    end,
+})
+```
+
+### Worked example: time-pressured vault
+
+A vault objective where the player has 25 seconds from the moment the task becomes active. Late = fail.
+
+```lua
+local listId = cc.TaskUI.Create({
+    title       = 'Fleeca Heist',
+    maxTime     = 1800,
+    objectives  = {
+        { id = 'hack_box',       text = 'Hack the electrical box' },
+        { id = 'hack_computers', text = 'Hack the computers',
+          counter = { current = 4, total = 4 } },
+        { id = 'open_vault',     text = 'Open the vault door' },
+        { id = 'grab_cash',      text = 'Grab the cash' },
+    },
+    onTaskTimerEnd = function(lid, tid)
+        if tid == 'open_vault' then
+            cc.TaskUI.SetStatus(lid, tid, 'failed')
+            cc.TaskUI.DeductTime(lid, 120) -- 2-minute penalty on the master clock
+        end
+    end,
+})
+
+cc.TaskUI.Show(listId, src)
+
+-- Later, when the player walks up to the vault and triggers the minigame:
+cc.TaskUI.SetStatus(listId, 'hack_computers', 'complete')
+cc.TaskUI.SetTaskTimer(listId, 'open_vault', 25) -- arm the chip
+
+-- If the vault opens before the timer expires:
+cc.TaskUI.ClearTaskTimer(listId, 'open_vault')
+cc.TaskUI.SetStatus(listId, 'open_vault', 'complete')
+```
+
+The chip appears the moment `SetTaskTimer` is called, ticks down at 1 Hz, and vanishes either on `ClearTaskTimer` or on its own expiry (which also fires `onTaskTimerEnd`).
+
+<Tip>
+Starting the timer with the previous task's `SetStatus('complete')` call is a clean pattern — the chip lights up the instant the new task becomes the active one, so the visible countdown matches the player's window.
+</Tip>
+
+## Dynamic objectives
+
+`AddTask` appends a new objective at runtime — useful for bonus/side objectives that only appear if the player triggers them. The new objective can carry an initial counter and/or timer.
+
+```lua
+cc.TaskUI.AddTask(listId, {
+    id = 'bonus_loot',
+    text = 'Grab the bonus loot from the manager\'s office',
+    timer = { timeLeft = 60 },
+})
+```
+
+There's no `RemoveTask` — once added, a task is part of the list until the list is destroyed. Mark it `complete` or `failed` to neutralize it.
+
+## API reference
+
+### List
+
+| Function | Returns | Notes |
+| --- | --- | --- |
+| `Create(data)` | `string` (list id) | See [the section above](#create). |
+| `Show(id, src)` | `boolean` | Adds a viewer; sends them the full state. |
+| `Hide(id, src)` | `boolean` | Removes a viewer. List stays alive. |
+| `GetViewers(id)` | `number[]` | Server ids currently subscribed. |
+| `Exists(id)` | `boolean` | |
+| `Destroy(id)` | `boolean` | Tears down for every viewer. |
+
+### Tasks
+
+| Function | Returns |
+| --- | --- |
+| `AddTask(id, task)` | `boolean` |
+| `SetStatus(id, taskId, status)` | `boolean` |
+
+### Counter chip
+
+| Function | Returns |
+| --- | --- |
+| `SetCounter(id, taskId, current, total)` | `boolean` |
+| `IncrementCounter(id, taskId, delta)` | `boolean` |
+
+### Master timer
+
+| Function | Returns |
+| --- | --- |
+| `SetTime(id, seconds)` | `number` (new value) |
+| `AddTime(id, seconds)` | `number` |
+| `DeductTime(id, seconds)` | `number` |
+| `GetTime(id)` | `number \| nil` |
+
+### Per-task timer
+
+| Function | Returns |
+| --- | --- |
+| `SetTaskTimer(id, taskId, seconds)` | `boolean` |
+| `ClearTaskTimer(id, taskId)` | `boolean` |
+| `AddTaskTime(id, taskId, seconds)` | `number \| boolean` |
+| `DeductTaskTime(id, taskId, seconds)` | `number \| boolean` |
+| `GetTaskTime(id, taskId)` | `number \| nil` |
+
+Every function above is also reachable via `exports.cc_lib:TaskUI_<Name>(...)` — for example `exports.cc_lib:TaskUI_SetTaskTimer(id, taskId, 25)`. Prefer the `GetLib()` form for readability; use the export form when you need to invoke from a context where holding a reference to `cc.TaskUI` is awkward.
+
+## Player keybind
+
+The TaskUI registers `+taskui_toggle` (default key `K`) on every client — pressing it collapses/expands every list that player can see. The keybind is registered automatically by `cc_lib`; you don't need to wire anything up.

@@ -3,6 +3,34 @@ title: "Changelog"
 description: "Release notes for every CC Scripts resource — newest at the top."
 ---
 
+<Update label="2026-05-15" description="cc_lib — per-task TaskUI timers + first docs pass" tags={["cc_lib", "Feature"]}>
+  ## Per-task countdown chips
+
+  TaskUI objectives now carry an optional **timer** alongside the existing **counter** chip. The chip renders next to the task text in `MM:SS`, ticks at 1 Hz server-side, and uses the same neutral styling as the counter chip.
+
+  ### New API (server)
+
+  - `cc.TaskUI.SetTaskTimer(id, taskId, seconds)` — arm or replace a per-task countdown.
+  - `cc.TaskUI.ClearTaskTimer(id, taskId)` — remove the chip without firing the expiry callback.
+  - `cc.TaskUI.AddTaskTime(id, taskId, seconds)` / `DeductTaskTime(id, taskId, seconds)` — adjust a running timer.
+  - `cc.TaskUI.GetTaskTime(id, taskId)` — read remaining seconds.
+  - New `onTaskTimerEnd(listId, taskId)` callback on `Create` — fires once when a per-task timer hits 0. Status is **not** auto-changed; callers decide whether expiry means fail, advance, or something else.
+  - Initial `objectives[].timer = { timeLeft = N }` is supported on `Create` and `AddTask`.
+
+  ### Behavior notes
+
+  - The chip is only visible while the task is the **active** one (same as the counter chip).
+  - Calling `SetTaskTimer` on a running timer atomically replaces it via a generation token — no stale ticker threads.
+  - `SetTaskTimer(id, taskId, 0)` is a clear, not a fire.
+
+  See [TaskUI → Per-task timer chip](/cc_lib/taskui#per-task-timer-chip) for the full surface and a worked vault example.
+
+  ## Docs
+
+  - New **Library (cc_lib)** section with [Introduction](/cc_lib), [Installation](/cc_lib/installation), [TaskUI](/cc_lib/taskui), and [Module reference](/cc_lib/modules).
+  - First documentation pass — previously cc_lib was only referenced indirectly through `cc_heistcontracts` pages.
+</Update>
+
 <Update label="2026-05-12" description="cc_heistcontracts v1.1.0" tags={["cc_heistcontracts", "Release"]}>
   ## Drip marketplace, active heists, give-up flow
 

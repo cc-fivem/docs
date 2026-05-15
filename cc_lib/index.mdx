@@ -1,0 +1,57 @@
+---
+title: "Introduction"
+description: "A thin compatibility wrapper around the third-party resources every CC Scripts heist depends on — plus an in-house TaskUI."
+icon: 'star'
+---
+
+`cc_lib` is the glue layer the rest of the CC Scripts stack builds on. It wraps third-party resources (`qbx_core`, `ox_inventory`, `ox_target`, `ox_doorlock`, `ox_lib`, `qbx_vehiclekeys`) behind a stable, named API, and ships its own **TaskUI** — the on-screen task list with a master countdown and per-task checkbox/counter/timer chips.
+
+If you swap an underlying resource later, the wrapper changes; your heist code doesn't.
+
+## At a glance
+
+<Columns cols={2}>
+  <Card title="Single export" icon="plug">
+    Everything is reached via `local cc = exports.cc_lib:GetLib()`. There's one shape on the client and one on the server.
+  </Card>
+  <Card title="Module auto-detection" icon="puzzle-piece">
+    On resource start, `cc_lib` probes for the supported backing resources and loads the matching adapter. Missing? The module slot is simply absent — calls error early instead of silently no-op'ing.
+  </Card>
+  <Card title="TaskUI" icon="list-check">
+    Server-authoritative task list rendered as a corner NUI. Master timer, per-task status, per-task counter chips, and per-task countdown chips. Survives respawn via auto re-sync.
+  </Card>
+  <Card title="Used everywhere" icon="link">
+    `cc_heistcontracts`, `cc_pacificheist`, `cc_paletoheist`, `cc_fleecaheist` all depend on this. Boot order matters — see [Installation](/cc_lib/installation).
+  </Card>
+</Columns>
+
+## What's inside
+
+<CardGroup cols={2}>
+  <Card title="TaskUI" href="/cc_lib/taskui" icon="list-check">
+    Full TaskUI reference: list lifecycle, master timer, task status, counter chips, and **per-task countdown timers**.
+  </Card>
+  <Card title="Module reference" href="/cc_lib/modules" icon="book">
+    Every adapter module — `Core`, `Inventory`, `Groups`, `Doorlock`, `Notification`, `Target`, `Interface`, `VehicleKeys` — and what backing resource each one wraps.
+  </Card>
+</CardGroup>
+
+## Calling shape
+
+```lua
+-- Server
+local cc = exports.cc_lib:GetLib()
+cc.Core.AddMoney(src, 'cash', 5000, 'heist payout')
+
+-- Client
+local cc = exports.cc_lib:GetLib()
+local zoneId = cc.Target.AddSphereZone({
+    coords = vector3(100.0, 200.0, 30.0),
+    radius = 1.5,
+    options = { { label = 'Loot', onSelect = function() end } },
+})
+```
+
+Module surfaces differ between client and server — `Notification` and `Core` are server-only; `Target` and `Interface` are client-only. The full table is in the [Module reference](/cc_lib/modules).
+
+Modules whose backing resource isn't running are absent from the `cc` table — guard with `if cc.Inventory then ...` if you can't assume the dependency is up.

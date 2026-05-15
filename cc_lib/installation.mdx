@@ -1,0 +1,77 @@
+---
+title: "Installation"
+description: "Drop the resource in, ensure it before everything that depends on it."
+icon: 'rocket'
+---
+
+## Requirements
+
+- FiveM server with `lua54 'yes'` support (the resource declares it).
+- `ox_lib` ensured before `cc_lib` — required as a hard `ox_lib 'locale'` dependency and pulled in via `'@ox_lib/init.lua'`.
+- At least one backing resource per module slot you intend to use:
+
+  | Module | Backing resource |
+  | --- | --- |
+  | `Core` | `qbx_core` |
+  | `Inventory` | `ox_inventory` (or `qb-inventory` on server) |
+  | `Target` | `ox_target` |
+  | `Doorlock` | `ox_doorlock` |
+  | `Notification` | `ox_lib` |
+  | `Interface` | `ox_lib` |
+  | `VehicleKeys` | `qbx_vehiclekeys` |
+  | `Groups` | `cc_lib` (in-house, always present) |
+  | `TaskUI` | `cc_lib` (in-house, always present) |
+
+  Modules whose backing resource isn't running are simply absent from the `cc` table — there's no fallback.
+
+## Steps
+
+<Steps>
+  <Step title="Place the resource">
+    Copy the `cc_lib` folder into `resources/[cc]/cc_lib/`.
+  </Step>
+  <Step title="Ensure boot order">
+    `cc_lib` probes for backing resources at start, so it must boot **after** them and **before** anything that calls into it.
+
+    ```
+    ensure ox_lib
+    ensure qbx_core
+    ensure ox_inventory
+    ensure ox_target
+    ensure ox_doorlock
+    ensure qbx_vehiclekeys
+    ensure cc_lib
+    # …then your heist resources
+    ensure cc_heistcontracts
+    ensure cc_pacificheist
+    ```
+  </Step>
+  <Step title="Declare the dependency">
+    In any resource calling `exports.cc_lib:GetLib()`, add `cc_lib` to `fxmanifest.lua`:
+
+    ```lua
+    dependencies {
+        'cc_lib',
+    }
+    ```
+  </Step>
+  <Step title="Verify the TaskUI">
+    Join the server, then run `/taskui_test` in the chat console. A demo task list should appear in the top-right with a master timer, a counter chip, and a per-task countdown chip.
+  </Step>
+</Steps>
+
+## Test commands
+
+The TaskUI module ships a small test harness so you can verify the full surface without writing calling code:
+
+| Command | What it does |
+| --- | --- |
+| `/taskui_test` | Creates a demo Fleeca-Heist task list anchored to the **right**. Runs a scripted sequence that exercises status changes, counter increments, master-timer deduct, **per-task countdowns**, and `AddTask`. |
+| `/taskui_test left` | Same, anchored to the **left**. |
+| `/taskui_test deduct <seconds>` | Deducts the given number of seconds from the active demo list's master timer. |
+| `/taskui_test add <seconds>` | Adds the given number of seconds to the active demo list's master timer. |
+| `/taskui_test stop` | Destroys the active demo list. |
+
+<Tip>
+The demo arms a 25s countdown on `open_vault` the moment that task becomes active, then a 15s countdown on `escape_cops` later in the sequence — so a single run shows the timer chip ticking, replacing, and clearing.
+</Tip>
