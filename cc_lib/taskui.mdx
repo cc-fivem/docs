@@ -139,6 +139,20 @@ cc.TaskUI.ClearTaskTimer(id, taskId)       -- remove the chip without firing onT
 
 Passing `0` or a negative number to `SetTaskTimer` is treated as a clear and behaves like `ClearTaskTimer`. Calling `SetTaskTimer` while a timer is already running atomically replaces it — the previous ticker thread exits via a generation token.
 
+### Freezing
+
+A running timer can be **paused** without clearing it. While frozen, the chip stays in place at its current value, turns red, and slowly flashes — a visual cue that the countdown is on hold (e.g. the player triggered a checkpoint, started a sub-objective, or hit a forgiving state).
+
+```lua
+cc.TaskUI.SetTaskTimerFrozen(id, taskId, true)   -- pause + go red/flash
+cc.TaskUI.SetTaskTimerFrozen(id, taskId, false)  -- resume from the same value
+cc.TaskUI.IsTaskTimerFrozen(id, taskId)          -- boolean
+```
+
+Freezing a timer that doesn't exist returns `false`. Setting the same frozen state twice in a row is a no-op (no extra broadcast).
+
+You can also start a timer in the frozen state by passing `timer = { timeLeft = 25, frozen = true }` to `Create` or `AddTask` — useful when the chip should appear immediately but only start counting once an in-world trigger fires.
+
 ### Expiry behavior
 
 When the chip ticks down to `0`:
@@ -258,6 +272,8 @@ There's no `RemoveTask` — once added, a task is part of the list until the lis
 | `AddTaskTime(id, taskId, seconds)` | `number \| boolean` |
 | `DeductTaskTime(id, taskId, seconds)` | `number \| boolean` |
 | `GetTaskTime(id, taskId)` | `number \| nil` |
+| `SetTaskTimerFrozen(id, taskId, frozen)` | `boolean` |
+| `IsTaskTimerFrozen(id, taskId)` | `boolean` |
 
 Every function above is also reachable via `exports.cc_lib:TaskUI_<Name>(...)` — for example `exports.cc_lib:TaskUI_SetTaskTimer(id, taskId, 25)`. Prefer the `GetLib()` form for readability; use the export form when you need to invoke from a context where holding a reference to `cc.TaskUI` is awkward.
 

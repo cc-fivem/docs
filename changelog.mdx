@@ -14,8 +14,9 @@ description: "Release notes for every CC Scripts resource — newest at the top.
   - `cc.TaskUI.ClearTaskTimer(id, taskId)` — remove the chip without firing the expiry callback.
   - `cc.TaskUI.AddTaskTime(id, taskId, seconds)` / `DeductTaskTime(id, taskId, seconds)` — adjust a running timer.
   - `cc.TaskUI.GetTaskTime(id, taskId)` — read remaining seconds.
+  - `cc.TaskUI.SetTaskTimerFrozen(id, taskId, frozen)` / `IsTaskTimerFrozen(id, taskId)` — pause a running countdown without clearing it. The chip turns red and slowly flashes while frozen.
   - New `onTaskTimerEnd(listId, taskId)` callback on `Create` — fires once when a per-task timer hits 0. Status is **not** auto-changed; callers decide whether expiry means fail, advance, or something else.
-  - Initial `objectives[].timer = { timeLeft = N }` is supported on `Create` and `AddTask`.
+  - Initial `objectives[].timer = { timeLeft = N, frozen = true }` is supported on `Create` and `AddTask`.
 
   ### Behavior notes
 
