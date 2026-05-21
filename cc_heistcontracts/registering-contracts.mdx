@@ -200,7 +200,7 @@ opts = {
 
         -- Tell everyone, then tear the in-world heist down.
         local cc = exports.cc_lib:GetLib()
-        for member, _ in pairs(cc.Groups.GetMembers(ctx.group)) do
+        for _, member in pairs(cc.Groups.GetMembers(ctx.group)) do
             cc.Notification.Info(member, 'Heist cancelled')
         end
         exports.cool_bank:Abort(ctx.group)
@@ -224,7 +224,7 @@ opts = {
 AddEventHandler('cool_bank:complete', function(group, success)
     if success then
         local cc = exports.cc_lib:GetLib()
-        for member, _ in pairs(cc.Groups.GetMembers(group)) do
+        for _, member in pairs(cc.Groups.GetMembers(group)) do
             -- Cash + items: your code, your core.
             cc.Core.AddMoney(member, 'cash', 12000)
             cc.Inventory.AddItem(member, 'cash_stack', 1)

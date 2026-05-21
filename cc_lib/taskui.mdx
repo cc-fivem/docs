@@ -22,6 +22,7 @@ local listId = cc.TaskUI.Create({
     },
     onTimerEnd     = function(id) print('time up', id) end,
     onTaskTimerEnd = function(id, taskId) print('task timer up', taskId) end,
+    onTaskComplete = function(id, taskId) print('task complete', taskId) end,
     onComplete     = function(id) print('every task complete', id) end,
 })
 
@@ -68,6 +69,7 @@ cc.TaskUI.Destroy(id)               -- tear it all down for every viewer
 | `id` | `string` | auto | Optional fixed id. If a list with this id exists it's destroyed first. |
 | `onTimerEnd` | `function(id)` | — | Fires once when `maxTime` hits 0. |
 | `onTaskTimerEnd` | `function(id, taskId)` | — | Fires when any per-task timer hits 0. |
+| `onTaskComplete` | `function(id, taskId)` | — | Fires when an objective transitions into `status == 'complete'`. Won't re-fire if `SetStatus('complete')` is called on an already-complete task. |
 | `onComplete` | `function(id)` | — | Fires once when every objective has `status == 'complete'`. |
 
 ### Objective shape
@@ -105,7 +107,7 @@ cc.TaskUI.SetStatus(id, taskId, 'failed')     -- cross it out
 cc.TaskUI.SetStatus(id, taskId, 'pending')    -- back to neutral
 ```
 
-Setting `'complete'` on the last remaining objective triggers `onComplete` once.
+Every transition into `'complete'` fires `onTaskComplete(listId, taskId)`. Setting `'complete'` on the last remaining objective also triggers `onComplete` once.
 
 ## Counter chip
 
