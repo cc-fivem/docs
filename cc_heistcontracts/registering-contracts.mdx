@@ -348,7 +348,7 @@ dependencies {
 exports.cc_heistcontracts:StartContract('cool_bank', { group = 'test', location = { id = 'main' } })
 ```
 
-Directly invokes a contract's entry point, bypassing the slot/purchase/VICE flow, the active-slot tracking, **and the cooldown gate**. Still works (the `/heist:test*` debug commands use it), but new integrations should use the dashboard-driven slot flow. A contract started this way has no active slot, so `FinishContract` will return `'not_active'` for the player.
+Directly invokes a contract's entry point, bypassing the slot/purchase/VICE flow, the active-slot tracking, **and the cooldown gate**. Still exported for back-compat with old wrapper scripts (the previously-shipped `/heist:test*` debug commands have been removed), but new integrations should use the dashboard-driven slot flow. A contract started this way has no active slot, so `FinishContract` will return `'not_active'` for the player.
 
 ## Cross-resource events
 

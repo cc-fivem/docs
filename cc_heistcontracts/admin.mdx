@@ -4,7 +4,7 @@ description: "Console + ACE-gated commands for granting XP and triggering test r
 icon: 'shield'
 ---
 
-`cc_heistcontracts` ships four console commands. Three are debug-only (un-restricted) and one is ACE-gated.
+`cc_heistcontracts` ships one console command, `/heist:grantxp`, ACE-gated. Everything else administrative is direct SQL or `cc_heistcontracts` restarts.
 
 ## `/heist:grantxp <alias> <amount>`
 
@@ -45,36 +45,15 @@ If the alias doesn't exist:
 
 Other failure codes: `invalid_amount` (zero/negative), `db` (UPDATE didn't affect any rows).
 
-## `/heist:test`, `/heist:test2`, `/heist:test3`
+## The legacy `StartContract` export
 
-Three **un-restricted** dev commands that exercise the legacy `StartContract` path against the bundled heists. They each:
-
-1. Create a `cc_lib.Groups` group named `'test'` with the caller as leader.
-2. Optionally add a second player as a member: `/heist:test 5` adds source 5 to the group.
-3. Call `StartContract` directly — bypassing the slot/purchase/VICE flow and the active-slot tracking.
-
-| Command | Calls |
-| --- | --- |
-| `/heist:test` | `StartContract('Paleto Heist', { group = 'test', location = { id = 'pinkcage' } })` |
-| `/heist:test2` | `StartContract('Fleeca Heist', { group = 'test', location = { id = 'pinkcage' } })` |
-| `/heist:test3` | `StartContract('Pacific Heist', { group = 'test', location = { id = 'pinkcage' } })` |
-
-These work as long as the named heist resources are registered. If you don't ship one of them, the matching test command will print `unknown contract` and do nothing.
-
-<Warning>
-  These commands are not ACE-restricted in the shipped resource. Anyone on the server can run them. **Either restrict or remove them before going to production.**
-</Warning>
-
-A reasonable production hardening:
+There used to be three un-restricted dev commands (`/heist:test`, `/heist:test2`, `/heist:test3`) that exercised this path. They've been removed from the shipped resource — the export itself still exists for back-compat with old wrappers:
 
 ```lua
-RegisterCommand('heist:test', function(source)
-    if source ~= 0 and not IsPlayerAceAllowed(source, 'admin') then return end
-    -- ...existing body...
-end, true)
+exports.cc_heistcontracts:StartContract('cool_bank', { group = 'test', location = { id = 'main' } })
 ```
 
-Note that `StartContract` bypasses the entire slot system — the player gets the heist's `entry_point` called directly without `activeSlot` being set, so `FinishContract` will return `'not_active'` for them. That's fine for one-off testing, but don't wire production gameplay through it.
+It bypasses the slot/purchase/VICE flow **and** the active-slot tracking, so `FinishContract` returns `'not_active'` for a player started this way. Fine for one-off testing from console; don't wire production gameplay through it.
 
 ## Resetting a profile (manual)
 
@@ -104,7 +83,7 @@ If a heist fails to call `FinishContract` (resource crashed, third-party heist d
 
 ## Debug logging
 
-`config.debug = true` in `shared/config.lua` toggles `[DEBUG]` lines from `utils.dprint`. Default is on. Useful lines you'll see:
+`config.debug = true` in `shared/config.lua` toggles `[DEBUG]` lines from `utils.dprint`. Default is **off** in the shipped config — flip it on locally when investigating. Useful lines you'll see:
 
 - `[DEBUG] listing added: <contractId> (N/max)` — every time the drip thread successfully adds a listing.
 - `[DEBUG] listings expired: N removed, M remain` — every expiry sweep that finds something to cull.
@@ -116,4 +95,4 @@ Server prints (not gated by `debug`) also include:
 
 - `[cc_heistcontracts] CancelHeist threw for <resource>: <msg>` — a heist resource's `CancelHeist` export raised an exception during a give-up flow.
 
-For production, flip `config.debug = false`. Server prints only happen on actual failures after that.
+With `config.debug = false` (the shipped default) you only see server prints on actual failures.

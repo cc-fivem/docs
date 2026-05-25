@@ -1,16 +1,16 @@
 ---
 title: "Dashboard"
-description: "What the F6 / /heist dashboard does, and how its pieces hang together."
+description: "What the contracts-tablet dashboard does, and how its pieces hang together."
 icon: 'window'
 ---
 
-The dashboard is the player's window into everything in `cc_heistcontracts`. It opens with **F6** (configurable via `config.openKey`) or the `/heist` command, and blocks until the player closes it — `SetNuiFocus(true, true)` is held while it's up.
+The dashboard is the player's window into everything in `cc_heistcontracts`. It opens when the player uses the **`heist_tablet`** (Contracts Tablet) inventory item, and blocks until they close it — `SetNuiFocus(true, true)` is held while it's up. There is no key bind or chat command; the item is the only entry point.
 
 ## How it boots
 
 <Steps>
-  <Step title="Player presses F6 / runs /heist">
-    `client/main.lua` flips `isOpen`, sends a `{ action = 'open' }` NUI message, takes NUI focus, and fires `cc_heistcontracts:requestSync` to the server.
+  <Step title="Player uses the Contracts Tablet">
+    ox_inventory (or your inventory) routes the item's use handler to `exports('heist_tablet', ...)` in `client/main.lua`. That export calls `openDashboard()`, which flips `isOpen`, sends a `{ action = 'open' }` NUI message, takes NUI focus, and fires `cc_heistcontracts:requestSync` to the server.
   </Step>
   <Step title="Server replies with a bootstrap payload">
     Includes currency config, slot count, the player's profile, the current marketplace listings, **the full contract registry** (so the UI can resolve owned-slot contract ids without re-fetching), the marketplace items catalog, the player's crew (if any), and the training catalog. Sent on `cc_heistcontracts:sync` with action `bootstrap`.

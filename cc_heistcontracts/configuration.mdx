@@ -14,10 +14,14 @@ All configuration lives in `shared/`. Three files, all hot-editable — restart 
 config.currency = {
     name = 'VICE',
     shortName = 'VICE',
+    startingBalance = 1000,
 }
 ```
 
-Display name for the built-in currency. Shown everywhere VICE is referenced in the dashboard.
+| Field | Effect |
+| --- | --- |
+| `name` / `shortName` | Display labels for the built-in currency. Shown everywhere VICE is referenced in the dashboard. |
+| `startingBalance` | VICE deposited into a brand-new profile the first time it's created. Set to `0` to start players broke. |
 
 ### Marketplace generation
 
@@ -26,7 +30,7 @@ config.rotation = {
     dripIntervalMs        = 3 * 60 * 1000,    -- 3 min: how often a new listing is added
     maxListings           = 9,                -- generation pauses once we hit this many
     listingExpiryMs       = 60 * 60 * 1000,   -- 60 min: listings older than this get cleared
-    expirySweepIntervalMs = 5 * 60 * 1000,    -- 5 min: how often we sweep for expired listings
+    expirySweepIntervalMs = 10 * 60 * 1000,   -- 10 min: how often we sweep for expired listings
 }
 ```
 
@@ -75,13 +79,9 @@ config.inviteExpiryMs = 60 * 1000
 
 Applies to both contract transfer invites and crew invites. After this elapses, the invite auto-cleans server-side.
 
-### Open key
+### Opening the dashboard
 
-```lua
-config.openKey = 'F6'
-```
-
-The key registered with `RegisterKeyMapping`. Players can rebind it from FiveM's settings menu under "Keybinds → FiveM". The chat command `/heist` always works regardless.
+There's no `openKey` and no chat command — the dashboard is opened by using the **`heist_tablet`** (Contracts Tablet) inventory item. The item's use handler calls the `exports('heist_tablet', ...)` export in `client/main.lua`, which runs `openDashboard()`. See [Installation → Register the heist_tablet item](/cc_heistcontracts/installation) for how this is wired up.
 
 ### XP / leveling
 
@@ -120,10 +120,10 @@ The dashboard's level ring is rendered server-side per profile, so curve changes
 ### Debug
 
 ```lua
-config.debug = true
+config.debug = false
 ```
 
-Toggles `utils.dprint` (server-side `[DEBUG]` logging). Default is on; flip to `false` for production.
+Toggles `utils.dprint` (server-side `[DEBUG]` logging). Default is off; flip to `true` when investigating drip/expiry behaviour or entry-point errors locally.
 
 ## `shared/marketplace_config.lua` — items + pickups
 

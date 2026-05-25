@@ -77,7 +77,7 @@ The dashboard closes, then your `invoke` function runs in a `CreateThread` on th
 - `invoke` is called inside a `pcall`. Throwing is treated as failure.
 - Return value `true` = pass, anything else = fail.
 - The result is sent to the dashboard NUI as a `trainingFinished` event so the dashboard can show pass/fail feedback when the player reopens it.
-- The dashboard does **not** auto-reopen after a custom run finishes. The player has to press F6 / `/heist` again.
+- The dashboard does **not** auto-reopen after a custom run finishes. The player has to use the `heist_tablet` item again.
 
 ## Failure modes
 

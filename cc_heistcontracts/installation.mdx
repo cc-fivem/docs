@@ -50,8 +50,22 @@ icon: 'rocket'
 
     Without this, a heist resource that boots before `cc_heistcontracts` will hit `SCRIPT ERROR: No such export RegisterContract in resource cc_heistcontracts`.
   </Step>
+  <Step title="Register the heist_tablet item">
+    The dashboard is opened by using an inventory item, not a key or chat command. With ox_inventory, the shipped definition is:
+
+    ```lua
+    ['heist_tablet'] = {
+        label = 'Contracts Tablet',
+        weight = 2800,
+        stack = false,
+        client = { image = 'heist_tablet.png', export = 'cc_heistcontracts.heist_tablet' },
+    },
+    ```
+
+    The `client.export` field points at `exports('heist_tablet', ...)` in `client/main.lua`, which calls `openDashboard()`. If you're on a different inventory, wire the item's "use" handler to call `exports.cc_heistcontracts:heist_tablet()` on the client.
+  </Step>
   <Step title="Verify in-game">
-    Join the server and press **F6** (or run `/heist`). The dashboard should open and prompt you to pick an alias. The marketplace starts empty on a fresh boot — listings drip in one at a time on the configured interval (3 minutes by default), so the first contract appears after the first interval has elapsed.
+    Join the server, give yourself a `heist_tablet` (Contracts Tablet) item, and use it from your inventory. The dashboard should open and prompt you to pick an alias. The marketplace starts empty on a fresh boot — listings drip in one at a time on the configured interval (3 minutes by default), so the first contract appears after the first interval has elapsed.
 
     <Tip>
       Want listings immediately for testing? Lower `config.rotation.dripIntervalMs` in `shared/config.lua` to something like `5 * 1000` (5 seconds) and restart the resource. Don't forget to put it back before production.

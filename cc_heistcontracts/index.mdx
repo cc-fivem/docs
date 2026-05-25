@@ -7,7 +7,7 @@ icon: 'star'
 `cc_heistcontracts` is the central hub other heist resources plug into. It owns:
 
 - The **player profile** (level, XP, VICE balance, contract slots, completion stats, alias).
-- The **dashboard NUI** (`F6` by default, or `/heist`) — where players see available contracts, manage slots, shop the marketplace, and practice in the training sandbox.
+- The **dashboard NUI** — opened by using the `heist_tablet` (Contracts Tablet) inventory item — where players see available contracts, manage slots, shop the marketplace, and practice in the training sandbox.
 - The **marketplace listings** — new contract listings drip into the marketplace one at a time, weighted by each contract's rarity. Old listings get culled after a configurable expiry.
 - The **slot economy** — players hold up to 3 (configurable) purchased contracts. Starting one marks the slot active; finishing or giving up consumes it.
 - The **active-heist tracking** — one heist per player at a time. The dashboard shows live state for the active slot and exposes a Give Up button that asks the heist resource to tear the run down.
@@ -66,7 +66,7 @@ That's it. VICE and XP rewards are credited automatically on success. Cash and i
     Three config files: `shared/config.lua`, `shared/marketplace_config.lua`, `shared/training_config.lua`. All hot-editable; restart the resource to apply.
   </Card>
   <Card title="Dashboard NUI" icon="window" href="/cc_heistcontracts/dashboard">
-    F6 / `/heist`. Sync, alias gating, contracts, marketplace, active-heist panel, ledger, training. React/Vite app served from `web/`.
+    Opened by using the `heist_tablet` inventory item. Sync, alias gating, contracts, marketplace, active-heist panel, ledger, training. React/Vite app served from `web/`.
   </Card>
   <Card title="Marketplace + pickups" icon="cart-shopping" href="/cc_heistcontracts/marketplace">
     VICE checkout, server-rolled pickup locations with time windows, ox_target zone with a "Knock" interaction.
@@ -75,7 +75,7 @@ That's it. VICE and XP rewards are credited automatically on success. Cash and i
     Practice cc_minigames games for free (no rewards, no penalty). Access fee + per-minigame unlocks behind level requirements.
   </Card>
   <Card title="Admin tools" icon="shield" href="/cc_heistcontracts/admin">
-    `/heist:grantxp` (ACE-gated), test commands for the bundled heists, log lines.
+    `/heist:grantxp` (ACE-gated), debug logging, SQL recipes for profile resets and stuck slots.
   </Card>
 </Columns>
 
@@ -101,7 +101,7 @@ cc_heistcontracts/
 │   ├── sync.lua                 # net event router; bootstrap/profile/rotation/crew payloads
 │   └── main.lua                 # public exports + admin commands
 ├── shared/
-│   ├── config.lua               # currency, rotation drip, slots, invite expiry, openKey, XP curve
+│   ├── config.lua               # currency (incl. starting balance), rotation drip, slots, invite expiry, XP curve
 │   ├── marketplace_config.lua   # categories/items + pickup locations
 │   └── training_config.lua      # access price + per-minigame unlock list
 ├── sql/
