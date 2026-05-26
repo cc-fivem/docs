@@ -1,0 +1,116 @@
+---
+title: "Installation"
+description: "Drop the resource in, register the ox_inventory items, ensure after cc_heistcontracts."
+icon: 'rocket'
+---
+
+## Requirements
+
+- A FiveM server already running [cc_heistcontracts](/cc_heistcontracts/installation) — Fleeca is a module that registers a contract against it.
+- [ox_lib](https://github.com/overextended/ox_lib) and [oxmysql](https://github.com/overextended/oxmysql).
+- A working `cc_lib` resource.
+- An inventory system (defaults assume **ox_inventory**).
+
+## Steps
+
+<Steps>
+  <Step title="Place the resource">
+    Copy `cc_fleecaheist` into a resources directory the server loads. The repo ships under `resources/[cc]/cc_fleecaheist/`.
+  </Step>
+  <Step title="Add the ox_inventory items">
+    The contract requires four items. If you're using ox_inventory, add them to `ox_inventory/data/items.lua` (the shipped Qbox config already has them at lines 815–830 of `items.lua`).
+
+    ```lua
+    ['hacking_device'] = {
+        label = 'DataJack',
+        weight = 600,
+        stack = false,
+        client = { image = 'hacking_device.png' },
+    },
+    ['laptop_cheap'] = {
+        label = 'Refurb LiteBook',
+        weight = 2500,
+        stack = false,
+        client = { image = 'laptop_cheap.png' },
+    },
+    ['electric_drill'] = {
+        label = 'Cordless Drill',
+        weight = 1800,
+        stack = false,
+        client = { image = 'electric_drill.png' },
+    },
+    ```
+
+    Drop the matching item images into `ox_inventory/web/images/` (filenames must match the `image` field).
+
+    <Note>
+      The `weapon_pistol` requirement is a standard ox_inventory weapon — no extra config needed if you're on the stock weapons list.
+    </Note>
+  </Step>
+  <Step title="Ensure after cc_heistcontracts">
+    Order matters in `server.cfg`:
+
+    ```
+    ensure oxmysql
+    ensure ox_lib
+    ensure cc_lib
+    ensure cc_heistcontracts
+    ensure cc_fleecaheist
+    ```
+
+    `cc_fleecaheist`'s `fxmanifest.lua` already declares `cc_heistcontracts` as a dependency, so FXServer will refuse to start it before the parent is up. Wrong order = `No such export RegisterContract in resource cc_heistcontracts`.
+  </Step>
+  <Step title="(Optional) Tune the police gate">
+    By default the contract refuses to start unless `≥ 2` on-duty `police` jobs are online. Edit `shared/contract.lua`:
+
+    ```lua
+    requiredPolice = { jobs = { 'police' }, count = 2 }
+    ```
+
+    Set `count = 0` (or remove the field) to disable the gate for testing.
+  </Step>
+  <Step title="Verify in-game">
+    1. Use a `heist_tablet` to open the dashboard.
+    2. The **Fleeca Bank Heist** listing should drip into the marketplace within the configured interval (3 min default).
+    3. Buy it for 2,500 VICE. The slot fills.
+    4. Pick a branch from the active-slot dropdown and press **Start**. With debug off you'll need 2 cops online; with debug on (`cfg.debug = true` in `shared/config.lua`) the gate is bypassed.
+
+    <Tip>
+      Need it to appear instantly? Lower `config.rotation.dripIntervalMs` in `cc_heistcontracts/shared/config.lua` to `5 * 1000` and restart `cc_heistcontracts`.
+    </Tip>
+  </Step>
+</Steps>
+
+## No SQL migrations
+
+`cc_fleecaheist` has no schema of its own — completion state lives in `cc_heistcontracts.heist_profiles`. Make sure the three `cc_heistcontracts` migrations have already been applied.
+
+## Customising loot
+
+`shared/rewards.lua` defines the **global loot table** — the totals that get distributed across all lockers and all trolleys when `cfg.use_global_loot_table = true` (the default).
+
+```lua
+return {
+    lockers = {
+        { type = 'item', item = 'black_money', amount = { min = 1000, max = 2000 } },
+        { type = 'money',                       amount = { min = 1000, max = 2000 } },
+    },
+    trolleys = {
+        { type = 'item', item = 'black_money', amount = { min = 1000, max = 2000 } },
+        { type = 'money',                       amount = { min = 1000, max = 2000 } },
+    },
+}
+```
+
+The rolled total is **split evenly across the units** in that category — if `black_money` rolls 1,500 and there are 3 lockers, each locker contains 500. Set `use_global_loot_table = false` in `shared/config.lua` and define loot per-unit inside each branch file under `shared/locations/`.
+
+## Disabling a branch
+
+Remove (or comment out) the matching entry in `shared/contract.lua`'s `locations` array. The default six branches are:
+
+- `pinkcage` — Pinkcage Branch
+- `delperro` — Del Perro Branch
+- `greatocean` — Great Ocean Hwy Branch
+- `harmony` — Harmony Branch
+- `hawick` — Hawick Branch
+- `legionsquare` — Legion Branch

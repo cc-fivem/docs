@@ -1,0 +1,107 @@
+---
+title: "Introduction"
+description: "Hit the Pacific Standard Bank — the endgame heist with jammers, lasers, thermite, and the manager."
+icon: 'star'
+---
+
+`cc_pacificheist` is the **hardest** heist module that plugs into [cc_heistcontracts](/cc_heistcontracts/index). It registers one contract — **Pacific Bank Heist** — at the **Pacific Standard Bank** in downtown Los Santos. The run includes signal jammer maintenance, a laser-tripwire grid, thermite-cut vault doors, an armed bank manager, and three loot rooms.
+
+## At a glance
+
+| | |
+| --- | --- |
+| Contract id | `pacific_heist` |
+| Difficulty | `hard` (rarity weight `0.2` — rare drip into marketplace) |
+| Level required | `5` |
+| Slot price | `2,500` VICE |
+| Crew size | 2–4 |
+| Duration | 1,200 s (20 min soft cap) |
+| Cooldown | 1,800 s (30 min server-wide after each completion) |
+| Rewards | `1,500` VICE + `250` XP. Cash and loot dropped in-world. |
+| Locations | `pacific` — Pacific Standard Bank |
+
+## How it plays
+
+1. Crew buys the **Pacific Bank Heist** for 2,500 VICE (requires heist level 5+).
+2. The leader starts the slot.
+3. The run flows through:
+    - **Find the note** — search a randomised spawn for the manager's keypad code
+    - **Keypad entry** in the safe room
+    - **Crack the safe** — pull the keycard
+    - **Manager's PC** hack — manager spawns at his desk armed with a pistol
+    - **Cellar panels** — left + right, both
+    - **Place jammers** at 3 spots, then **maintain** their signal as the bar drains (90s per drain, +40% per maintain)
+    - **Thermite** the vault doors (left + right)
+    - **Vault panel** crack (BlackBook Mk-III)
+    - **Wait the vault timer**
+    - **Loot rooms** — left, right, inside (laptop-crack each, then drill the lockers and grab trolleys)
+4. Police are dispatched on `vault_panel` (and optionally on laser hits — `cfg.dispatch_on_laser_hit = true`).
+5. cc_heistcontracts credits VICE + XP on success.
+
+## Required items
+
+| Item id | Inventory label | Role |
+| --- | --- | --- |
+| `laptop_elite` | BlackBook Mk-III | Vault panel + loot room cracks |
+| `signal_jammer` | Signal Jammer | Three placements (qty 3) |
+| `thermite` | Thermite Charge | Vault door cuts |
+| `electric_drill` | Cordless Drill | Lockers |
+| `weapon_digiscanner` | Digiscanner (weapon) | Note search / signal sweep |
+| `weapon_assaultrifle` | Assault Rifle (weapon) | Required loadout |
+
+<Note>
+  `weapon_digiscanner` is a vanilla GTA weapon hash — most ox_inventory weapon configs include it. `signal_jammer` and `thermite` and the laptops need to be added/uncommented in your ox_inventory items list before crews can start the run. See the [installation guide](/cc_pacificheist/installation).
+</Note>
+
+## Streamed assets
+
+`cc_pacificheist` ships custom signal-jammer props under `stream/`:
+
+```
+stream/
+├── cc_jammer.ytyp     (data_file 'DLC_ITYP_REQUEST')
+├── cc_jammer.ytd
+├── cc_jammer_a.ydr
+├── cc_jammer_b.ydr
+└── cc_jammer_c.ydr
+```
+
+The `data_file 'DLC_ITYP_REQUEST'` line in `fxmanifest.lua` is what makes the jammer prop available client-side. Don't remove the `stream/` folder — without it the jammers won't render.
+
+## Dependencies
+
+- [`cc_heistcontracts`](/cc_heistcontracts/index)
+- [`cc_lib`](/cc_lib/index) — TaskUI, Groups, Inventory, Target, Notification, Dispatch wrappers
+- `ox_lib`, `oxmysql`
+- A police job framework that responds to `cc.Dispatch.Alert`
+
+## Where things live
+
+```
+cc_pacificheist/
+├── client/
+│   ├── cl_main.lua       # task list, world state, minigame wiring
+│   ├── animations.lua    # scene anims (escrowed)
+│   ├── functions.lua     # helpers (escrowed)
+│   ├── jammers.lua       # signal jammer placement + drain loop
+│   ├── lasers/           # laser tripwire grid
+│   ├── minigames.lua     # minigame router (editable)
+│   └── scanner.lua       # digiscanner / signal sweep
+├── server/
+│   ├── contract.lua      # RegisterContract call + cancel/reset
+│   ├── sv_main.lua       # task progression, loot distribution
+│   ├── functions.lua     # bank init/reset
+│   ├── sync.lua          # active-location state
+│   └── utils.lua
+├── shared/
+│   ├── config.lua        # jammer drain, manager toggle, dispatch
+│   ├── contract.lua      # contract definition (id, price, items, locations)
+│   ├── rewards.lua       # global loot table (lockers, trolleys)
+│   ├── location.lua      # task coords, doors, cameras, zones
+│   ├── models.lua        # trolley & loot prop models
+│   └── configuration/
+│       ├── jammer_locations.lua   # 3 jammer placement points
+│       └── note_locations.lua     # randomised note spawn pool
+├── stream/               # custom jammer .ydr/.ytd/.ytyp
+└── web/                  # (optional NUI for in-bank UI)
+```

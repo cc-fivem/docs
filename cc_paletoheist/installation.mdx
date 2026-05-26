@@ -1,0 +1,123 @@
+---
+title: "Installation"
+description: "Drop the resource in, add the ox_inventory items, ensure after cc_heistcontracts."
+icon: 'rocket'
+---
+
+## Requirements
+
+- A FiveM server already running [cc_heistcontracts](/cc_heistcontracts/installation).
+- [ox_lib](https://github.com/overextended/ox_lib) and [oxmysql](https://github.com/overextended/oxmysql).
+- A working `cc_lib` resource.
+- An inventory system (defaults assume **ox_inventory**).
+
+## Steps
+
+<Steps>
+  <Step title="Place the resource">
+    Copy `cc_paletoheist` into a resources directory the server loads. The repo ships under `resources/[cc]/cc_paletoheist/`.
+  </Step>
+  <Step title="Add the ox_inventory items">
+    Five items must exist in your inventory system. With **ox_inventory**, add these to `ox_inventory/data/items.lua` (the shipped Qbox config has them already):
+
+    ```lua
+    ['hacking_device'] = {
+        label = 'DataJack',
+        weight = 600,
+        stack = false,
+        client = { image = 'hacking_device.png' },
+    },
+    ['laptop_pro'] = {
+        label = 'Jackbox Pro',
+        weight = 2800,
+        stack = false,
+        client = { image = 'laptop_pro.png' },
+    },
+    ['frequency_tuner'] = {
+        label = 'Signal Modulator',
+        weight = 250,
+        client = { image = 'frequency_tuner.png' },
+    },
+    ['electric_drill'] = {
+        label = 'Cordless Drill',
+        weight = 1800,
+        stack = false,
+        client = { image = 'electric_drill.png' },
+    },
+    ```
+
+    Drop the matching item images into `ox_inventory/web/images/`. `weapon_smg` is the standard ox_inventory SMG — no extra config needed.
+  </Step>
+  <Step title="Ensure after cc_heistcontracts">
+    Order in `server.cfg`:
+
+    ```
+    ensure oxmysql
+    ensure ox_lib
+    ensure cc_lib
+    ensure cc_heistcontracts
+    ensure cc_paletoheist
+    ```
+
+    `cc_paletoheist`'s `fxmanifest.lua` already declares `cc_heistcontracts` as a dependency, so FXServer enforces this.
+  </Step>
+  <Step title="(Optional) Tune the vault timer">
+    Default vault open delay is 60 seconds. Edit `shared/config.lua`:
+
+    ```lua
+    cfg.vault_timer = 60   -- seconds
+    ```
+
+    Set it lower for testing, higher for harder runs.
+  </Step>
+  <Step title="(Optional) Doors integration">
+    `shared/location.lua` references door ids managed by `cc_lib.Doors` (or an equivalent door system):
+
+    ```lua
+    doors = {
+        security_backdoor = 'paleto-security_backdoor',
+        hall1             = 'paleto-security_front',
+        hall2             = 'paleto-hall',
+        office1           = 'paleto-office1',
+        office2           = 'paleto-office2',
+        office3           = 'paleto-office3',
+        control_room      = 'paleto-control_room',
+        vault             = 'paleto-vault',
+    },
+    ```
+
+    If you're on `ox_doorlock` (or similar), register doors with these ids so the heist can unlock them at the right step. Omit door registration and the heist will still run, but doors will stay locked.
+  </Step>
+  <Step title="Verify in-game">
+    1. Set a profile to **level 3** (the contract is gated) — use `/heist:grantxp <playerId> 500` if you've enabled the admin command.
+    2. Open the dashboard via the `heist_tablet`. **Paleto Bank Heist** should drip into the marketplace.
+    3. Buy it for 2,500 VICE, start the slot, drive to Paleto.
+
+    <Tip>
+      Want the listing instantly? Lower `config.rotation.dripIntervalMs` in `cc_heistcontracts/shared/config.lua`.
+    </Tip>
+  </Step>
+</Steps>
+
+## No SQL migrations
+
+`cc_paletoheist` has no schema. Completion state lives in `cc_heistcontracts.heist_profiles`. Make sure the three `cc_heistcontracts` migrations have already been applied.
+
+## Customising loot
+
+`shared/rewards.lua` defines the **global loot table**. When `cfg.use_global_loot_table = true` (default), the rolled totals are split evenly across all lockers and all trolleys.
+
+```lua
+return {
+    lockers = {
+        { type = 'item', item = 'black_money', amount = { min = 1000, max = 2000 } },
+        { type = 'money',                       amount = { min = 1000, max = 2000 } },
+    },
+    trolleys = {
+        { type = 'item', item = 'black_money', amount = { min = 1000, max = 2000 } },
+        { type = 'money',                       amount = { min = 1000, max = 2000 } },
+    },
+}
+```
+
+Set `use_global_loot_table = false` to define loot per-unit inside `shared/location.lua` (each locker and each trolley accepts its own `rewards` table).

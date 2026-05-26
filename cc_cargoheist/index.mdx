@@ -1,0 +1,73 @@
+---
+title: "Introduction"
+description: "Raid an industrial cargo drop site. Solo-friendly, angle-grinder action, fast turnaround."
+icon: 'star'
+---
+
+`cc_cargoheist` is a low-difficulty, **solo-friendly** heist module that plugs into [cc_heistcontracts](/cc_heistcontracts/index). It registers one contract — **Cargo Container Raid** — at the **LSIA Cargo Yard**. Crews clear armed guards, cut shipping containers open with an angle grinder, and grab whatever's inside.
+
+## At a glance
+
+| | |
+| --- | --- |
+| Contract id | `cargo_container` |
+| Difficulty | `easy` (rarity weight `1.0`) |
+| Level required | `1` |
+| Slot price | `1,500` VICE |
+| Crew size | **1–4** (solo allowed) |
+| Duration | 1,200 s (20 min soft cap) |
+| Cooldown | 90 s (server-wide between runs) |
+| Rewards | `1,500` VICE + `250` XP. Black money dropped in-world. |
+| Guard count | 4–8 armed guards (configurable) |
+| Locations | `lsia_docks` — LSIA Cargo Yard |
+
+## How it plays
+
+1. Crew buys the **Cargo Container Raid** for 1,500 VICE.
+2. The leader presses **Start**. The site spawns:
+    - The Tuner-DLC shipping containers (`tr_prop_tr_container_01a`) with a paired collision shell
+    - A small lock prop on each container's doors
+    - 4–8 armed guards (`csb_mweather`) with carbine rifles
+3. Crew clears the guards. The first guard hit triggers a single police dispatch.
+4. At each container, the player uses an angle grinder to cut through the lock. The scripted scene animates the ped, the container doors, the grinder, and a bag worn over the shoulder — sparks fly at the 4-second mark.
+5. Each opened container reveals a loot prop (`ex_prop_crate_ammo_sc`). Looting it credits the player with black money.
+6. cc_heistcontracts credits VICE + XP on success.
+
+## Required items
+
+| Item id | Inventory label | Role |
+| --- | --- | --- |
+| `angle_grinder` | Angle Grinder | Cuts container locks |
+
+<Note>
+  The `angle_grinder` item is **not** shipped in the default `ox_inventory/data/items.lua`. You need to add it before crews can start the contract. The default `cc_heistcontracts` marketplace also does not list it — you'll want to add it to `cc_heistcontracts/shared/marketplace_config.lua` under the `tools` category. See the [installation guide](/cc_cargoheist/installation).
+
+  Internally the grinder check uses item id `hacking_device` (`cfg.grinder.itemId` in `shared/config.lua`) during the cut scene — the contract-level `angle_grinder` check is the inventory gate to start the run, while the in-scene check is the tool being held while cutting.
+</Note>
+
+## Dependencies
+
+- [`cc_heistcontracts`](/cc_heistcontracts/index)
+- [`cc_lib`](/cc_lib/index)
+- [`ox_target`](https://github.com/overextended/ox_target) — declared as a direct dependency (used for container interactions)
+- [`ox_inventory`](https://github.com/overextended/ox_inventory) — declared as a direct dependency
+- `ox_lib`, `oxmysql`
+- A police job framework that responds to `cc.Dispatch.Alert`
+
+## Where things live
+
+```
+cc_cargoheist/
+├── client/
+│   └── cl_main.lua       # task list, container interactions, scripted scene
+├── server/
+│   ├── contract.lua      # RegisterContract call + cancel
+│   ├── sv_main.lua       # guard spawning, loot distribution
+│   ├── functions.lua     # site init/reset
+│   └── sync.lua          # active-location state
+└── shared/
+    ├── config.lua        # container/lock models, guard config, grinder scene
+    ├── contract.lua      # contract definition (id, price, items, locations)
+    ├── rewards.lua       # global loot table (containers)
+    └── locations/        # per-site coords (lsia_docks.lua)
+```

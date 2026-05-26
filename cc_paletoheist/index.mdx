@@ -1,0 +1,86 @@
+---
+title: "Introduction"
+description: "Rob Blaine County Savings — the mid-tier contract with frequency tuning and thermite."
+icon: 'star'
+---
+
+`cc_paletoheist` is a mid-difficulty heist module that plugs into [cc_heistcontracts](/cc_heistcontracts/index). It registers one contract — **Paleto Bank Heist** — at the **Blaine County Savings Bank** in Paleto Bay. Compared to Fleeca, it adds an outdoor frequency-tuner phase, a thermite-cut control room, and a multi-locker drill phase before the trolleys.
+
+## At a glance
+
+| | |
+| --- | --- |
+| Contract id | `paleto_heist` |
+| Difficulty | `medium` (rarity weight `0.5`) |
+| Level required | `3` |
+| Slot price | `2,500` VICE |
+| Crew size | 2–4 |
+| Duration | 1,200 s (20 min soft cap) |
+| Cooldown | 1,800 s (30 min server-wide after each completion) |
+| Vault timer | `60` s (configurable in `shared/config.lua`) |
+| Rewards | `1,500` VICE + `250` XP. Cash and loot dropped in-world. |
+| Locations | `paleto` — Blaine County Savings Bank |
+
+## How it plays
+
+1. Crew buys the **Paleto Bank Heist** listing on the dashboard for 2,500 VICE (requires heist level 3+).
+2. The leader picks the Paleto branch and presses **Start**.
+3. Tasks step through:
+    - **Security backdoor** hack (DataJack)
+    - **Office computers** hack (DataJack)
+    - **Frequency control** dial-in (Signal Modulator)
+    - **Control room** thermite cut
+    - **Vault panel** crack (Jackbox Pro laptop)
+    - **Vault timer** wait
+    - **Lockers & safe** drill (Cordless Drill)
+    - **Trolleys** loot
+4. Police are dispatched on `vault_panel` completion.
+5. cc_heistcontracts credits VICE + XP on success.
+
+## Required items
+
+The dashboard refuses to start the run if any of these are missing from a crew member's inventory:
+
+| Item id | Inventory label | Role |
+| --- | --- | --- |
+| `hacking_device` | DataJack | Security backdoor, office computers |
+| `laptop_pro` | Jackbox Pro | Vault panel |
+| `frequency_tuner` | Signal Modulator | Outdoor frequency control |
+| `electric_drill` | Cordless Drill | Lockers & safe |
+| `weapon_smg` (weapon) | SMG | Required loadout |
+
+The marketplace gates `laptop_pro` and `frequency_tuner` behind heist level 3 by default. `hacking_device` and `electric_drill` are level-1 unlocks.
+
+<Note>
+  Tool durability — successful minigames burn `5` durability, failures burn `10`. The frequency tuner burns `10` per use (no success/fail signal). Items break at 0% durability.
+</Note>
+
+## Dependencies
+
+- [`cc_heistcontracts`](/cc_heistcontracts/index)
+- [`cc_lib`](/cc_lib/index) — TaskUI, Groups, Inventory, Target, Notification, Dispatch wrappers
+- `ox_lib`, `oxmysql`
+- A police job framework that responds to `cc.Dispatch.Alert`
+
+## Where things live
+
+```
+cc_paletoheist/
+├── client/
+│   ├── cl_main.lua       # task list, world state, minigame wiring
+│   ├── camera.lua        # security camera POV
+│   ├── animations.lua    # scene anims (escrowed)
+│   ├── functions.lua     # helpers (escrowed)
+│   └── minigames.lua     # minigame router (editable)
+├── server/
+│   ├── contract.lua      # RegisterContract call + cancel/reset
+│   ├── sv_main.lua       # task progression, loot distribution
+│   ├── functions.lua     # bank init/reset
+│   └── sync.lua          # active-location state
+└── shared/
+    ├── config.lua        # global loot flag, vault timer, dispatch, debug
+    ├── contract.lua      # contract definition (id, price, items, locations)
+    ├── rewards.lua       # global loot table (lockers, trolleys)
+    ├── location.lua      # task coords, doors, cameras, zones
+    └── models.lua        # trolley & loot prop models
+```

@@ -1,0 +1,127 @@
+---
+title: "Installation"
+description: "Drop the resource in, register the ox_inventory items, stream the jammer assets, ensure after cc_heistcontracts."
+icon: 'rocket'
+---
+
+## Requirements
+
+- A FiveM server already running [cc_heistcontracts](/cc_heistcontracts/installation).
+- [ox_lib](https://github.com/overextended/ox_lib) and [oxmysql](https://github.com/overextended/oxmysql).
+- A working `cc_lib` resource.
+- An inventory system (defaults assume **ox_inventory**).
+- Streaming enabled on the server — the resource ships custom jammer assets.
+
+## Steps
+
+<Steps>
+  <Step title="Place the resource">
+    Copy `cc_pacificheist` into a resources directory the server loads. The repo ships under `resources/[cc]/cc_pacificheist/`. The `stream/` folder must travel with it — the custom jammer props live there.
+  </Step>
+  <Step title="Add the ox_inventory items">
+    Six items are required; the laptop and digiscanner are already in the Qbox-shipped `items.lua` but the signal jammer and thermite need adding if they're commented out. Open `ox_inventory/data/items.lua`:
+
+    ```lua
+    ['laptop_elite'] = {
+        label = 'BlackBook Mk-III',
+        weight = 3200,
+        stack = false,
+        client = { image = 'laptop_elite.png' },
+    },
+    ['signal_jammer'] = {
+        label = 'Signal Jammer',
+        weight = 400,
+        client = { image = 'signal_jammer.png' },
+    },
+    ['thermite'] = {
+        label = 'Thermite Charge',
+        weight = 800,
+        client = { image = 'thermite.png' },
+    },
+    ['electric_drill'] = {
+        label = 'Cordless Drill',
+        weight = 1800,
+        stack = false,
+        client = { image = 'electric_drill.png' },
+    },
+    ```
+
+    Drop matching images into `ox_inventory/web/images/`. `weapon_digiscanner` and `weapon_assaultrifle` are vanilla weapon hashes — make sure they're not removed from your weapons list.
+
+    <Note>
+      In the shipped Qbox `items.lua` the `thermite` entry exists but is **commented out** at line ~830. Uncomment it before launching this heist.
+    </Note>
+  </Step>
+  <Step title="Ensure after cc_heistcontracts">
+    Order in `server.cfg`:
+
+    ```
+    ensure oxmysql
+    ensure ox_lib
+    ensure cc_lib
+    ensure cc_heistcontracts
+    ensure cc_pacificheist
+    ```
+
+    `cc_pacificheist`'s `fxmanifest.lua` already declares `cc_heistcontracts` as a dependency.
+  </Step>
+  <Step title="Verify the jammer assets are streaming">
+    The custom jammer props require the `data_file 'DLC_ITYP_REQUEST' 'stream/cc_jammer.ytyp'` line in `fxmanifest.lua` (already present). On first boot, watch the server console for:
+
+    ```
+    Streaming pacificheist resource 'cc_jammer.ytyp'
+    ```
+
+    No error = good. If clients see invisible jammers, the `.ytyp` isn't being read — check that `this_is_a_map 'yes'` is still in `fxmanifest.lua`.
+  </Step>
+  <Step title="(Optional) Tune the jammer difficulty">
+    `shared/config.lua`:
+
+    ```lua
+    cfg.jammer = {
+        drainSeconds = 90,    -- 100% → 0% takes this many seconds with no maintain
+        bumpAmount   = 40,    -- +% on a successful maintain
+        beepWarn     = 40,    -- start slow beep when signal ≤ this %
+        beepCritical = 20,    -- switch to fast beep when signal ≤ this %
+    }
+    cfg.maintain_timer = 5 * 60   -- maintain cooldown per jammer (seconds)
+    ```
+
+    Raise `drainSeconds` for a more forgiving fight; drop `bumpAmount` to make maintain runs more critical.
+  </Step>
+  <Step title="(Optional) Disable the bank manager">
+    By default a manager ped (`IG_Avery`) spawns at his PC armed with a pistol and shoots the crew. Set `cfg.enable_manager = false` in `shared/config.lua` to skip him.
+  </Step>
+  <Step title="Verify in-game">
+    1. Grant a profile **level 5** (`/heist:grantxp <playerId> 1500` reaches level 5 on the default curve).
+    2. Open the dashboard via the `heist_tablet`. **Pacific Bank Heist** drips into the marketplace at weight 0.2 — it's rare. Lower `config.rotation.dripIntervalMs` or temporarily bump the contract `weight` to 1.0 in `shared/contract.lua` to test.
+    3. Buy it for 2,500 VICE, gather the items, drive to downtown.
+
+    <Tip>
+      With `cfg.debug = true` plus the manager disabled, you can solo the contract to verify task progression without fighting the cops dispatched on `vault_panel`.
+    </Tip>
+  </Step>
+</Steps>
+
+## No SQL migrations
+
+`cc_pacificheist` has no schema. Completion state lives in `cc_heistcontracts.heist_profiles`. Make sure the three `cc_heistcontracts` migrations have already been applied.
+
+## Customising loot
+
+`shared/rewards.lua` is the global loot table. When `cfg.use_global_loot_table = true` (default), totals are split across all lockers and all trolleys.
+
+```lua
+return {
+    lockers = {
+        { type = 'item', item = 'black_money', amount = { min = 1000, max = 2000 } },
+        { type = 'money',                       amount = { min = 1000, max = 2000 } },
+    },
+    trolleys = {
+        { type = 'item', item = 'black_money', amount = { min = 1000, max = 2000 } },
+        { type = 'money',                       amount = { min = 1000, max = 2000 } },
+    },
+}
+```
+
+The Pacific heist has **three loot rooms** (`left`, `right`, `inside`), each containing lockers and trolleys. The global table applies the rolled totals across every locker across every room, and similarly for trolleys. For per-room control, set `use_global_loot_table = false` and define `rewards` tables on each unit in `shared/location.lua`.

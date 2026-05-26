@@ -59,6 +59,34 @@
               "cc_heistcontracts/training",
               "cc_heistcontracts/admin"
             ]
+          },
+          {
+            "group": "Fleeca Heist",
+            "pages": [
+              "cc_fleecaheist/index",
+              "cc_fleecaheist/installation"
+            ]
+          },
+          {
+            "group": "Paleto Heist",
+            "pages": [
+              "cc_paletoheist/index",
+              "cc_paletoheist/installation"
+            ]
+          },
+          {
+            "group": "Cargo Heist",
+            "pages": [
+              "cc_cargoheist/index",
+              "cc_cargoheist/installation"
+            ]
+          },
+          {
+            "group": "Pacific Heist",
+            "pages": [
+              "cc_pacificheist/index",
+              "cc_pacificheist/installation"
+            ]
           }
         ]
       },

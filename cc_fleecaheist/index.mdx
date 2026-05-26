@@ -1,0 +1,84 @@
+---
+title: "Introduction"
+description: "Hit a Fleeca branch. Low risk, low reward — the entry-level contract."
+icon: 'star'
+---
+
+`cc_fleecaheist` is a heist module that plugs into [cc_heistcontracts](/cc_heistcontracts/index). It registers a single contract — **Fleeca Bank Heist** — with **six branch locations** scattered across Los Santos and Blaine County. Players see the listing in the dashboard marketplace, buy a slot, and start the run from a chosen branch.
+
+## At a glance
+
+| | |
+| --- | --- |
+| Contract id | `fleeca_heist` |
+| Difficulty | `easy` (rarity weight `1.0`) |
+| Level required | `1` |
+| Slot price | `2,500` VICE |
+| Crew size | 2–4 |
+| Duration | 1,200 s (20 min soft cap) |
+| Cooldown | 1,800 s (30 min server-wide after each completion) |
+| Rewards | `1,500` VICE + `250` XP. Cash and loot dropped in-world. |
+| Police gate | `≥ 2` on-duty officers (`police` job) must be online |
+| Locations | Pinkcage, Del Perro, Great Ocean Hwy, Harmony, Hawick, Legion Square |
+
+## How it plays
+
+1. Crew buys the **Fleeca Bank Heist** listing on the dashboard for 2,500 VICE.
+2. The leader picks a branch and presses **Start** in the active-heist panel.
+3. The crew rolls up to the branch. Tasks step through (in order):
+    - Hack the **power box** (DataJack)
+    - Disable the **security camera** view
+    - Hack the **terminal computers** (DataJack)
+    - Crack the **vault panel** (Refurb LiteBook)
+    - Wait out the **vault timer**
+    - Drill the lockers and trolleys (Cordless Drill)
+4. Police are dispatched on `vault_panel` completion — that's the loud-go moment.
+5. Loot the cash piles and gold trolleys, leave the branch.
+6. cc_heistcontracts credits VICE + XP on success.
+
+## Required items
+
+Players have to carry these in their inventory before they can press **Start**. The dashboard refuses to start the run if any are missing.
+
+| Item id | Inventory label | Role |
+| --- | --- | --- |
+| `hacking_device` | DataJack | Power box, cameras, computers |
+| `laptop_cheap` | Refurb LiteBook | Vault panel |
+| `electric_drill` | Cordless Drill | Lockers & trolleys |
+| `weapon_pistol` (weapon) | Pistol | Required loadout |
+
+All four are sold in the [contracts marketplace](/cc_heistcontracts/marketplace) by default, except the pistol — that's a normal sidearm players bring themselves.
+
+<Note>
+  Durability — every successful minigame burns `5` durability on the tool; every fail burns `10`. Items without metadata start at 100% and break at 0. This is handled inside the heist's `onUse` callbacks; no extra config needed in cc_heistcontracts.
+</Note>
+
+## Dependencies
+
+- [`cc_heistcontracts`](/cc_heistcontracts/index) — registers the contract and owns the slot economy
+- [`cc_lib`](/cc_lib/index) — TaskUI, Groups, Inventory, Target, Notification, Dispatch wrappers
+- `ox_lib`, `oxmysql`
+- A police job framework that responds to `cc.Dispatch.Alert` (defaults to `police`, `trooper`, `sheriff`)
+
+## Where things live
+
+```
+cc_fleecaheist/
+├── client/
+│   ├── cl_main.lua       # task list, world state, minigame wiring
+│   ├── camera.lua        # security camera POV
+│   ├── animations.lua    # scene anims (escrowed)
+│   ├── functions.lua     # helpers (escrowed)
+│   └── minigames.lua     # minigame router (editable)
+├── server/
+│   ├── contract.lua      # RegisterContract call + cancel/reset
+│   ├── sv_main.lua       # task progression, loot distribution
+│   ├── functions.lua     # bank init/reset
+│   └── sync.lua          # active-location state
+└── shared/
+    ├── config.lua        # global loot flag, dispatch payload, debug
+    ├── contract.lua      # contract definition (id, price, items, locations)
+    ├── rewards.lua       # global loot table (lockers, trolleys)
+    ├── models.lua        # trolley & loot prop models
+    └── locations/        # per-branch coords (one file per branch id)
+```
