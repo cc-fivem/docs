@@ -1,47 +1,18 @@
 ---
 title: "Introduction"
-description: "Rob Blaine County Savings — the mid-tier contract with frequency tuning and thermite."
+description: "Heist module: registers the Paleto Bank contract with cc_heistcontracts."
 icon: 'star'
 ---
 
-`cc_paletoheist` is a mid-difficulty heist module that plugs into [cc_heistcontracts](/cc_heistcontracts/index). It registers one contract — **Paleto Bank Heist** — at the **Blaine County Savings Bank** in Paleto Bay. Compared to Fleeca, it adds an outdoor frequency-tuner phase, a thermite-cut control room, and a multi-locker drill phase before the trolleys.
+`cc_paletoheist` is a heist module that plugs into [cc_heistcontracts](/cc_heistcontracts/index). It registers a single contract — **Paleto Bank Heist** — at the Blaine County Savings Bank and hands runtime control of the run to cc_heistcontracts.
 
-## At a glance
-
-| | |
-| --- | --- |
-| Contract id | `paleto_heist` |
-| Difficulty | `medium` (rarity weight `0.5`) |
-| Level required | `3` |
-| Slot price | `2,500` VICE |
-| Crew size | 2–4 |
-| Duration | 1,200 s (20 min soft cap) |
-| Cooldown | 1,800 s (30 min server-wide after each completion) |
-| Vault timer | `60` s (configurable in `shared/config.lua`) |
-| Rewards | `1,500` VICE + `250` XP. Cash and loot dropped in-world. |
-| Locations | `paleto` — Blaine County Savings Bank |
-
-## How it plays
-
-1. Crew buys the **Paleto Bank Heist** listing on the dashboard for 2,500 VICE (requires heist level 3+).
-2. The leader picks the Paleto branch and presses **Start**.
-3. Tasks step through:
-    - **Security backdoor** hack (DataJack)
-    - **Office computers** hack (DataJack)
-    - **Frequency control** dial-in (Signal Modulator)
-    - **Control room** thermite cut
-    - **Vault panel** crack (Jackbox Pro laptop)
-    - **Vault timer** wait
-    - **Lockers & safe** drill (Cordless Drill)
-    - **Trolleys** loot
-4. Police are dispatched on `vault_panel` completion.
-5. cc_heistcontracts credits VICE + XP on success.
+Everything in this page is a **default**. All of it lives in plain Lua files in `shared/` and is meant to be edited.
 
 ## Required items
 
-The dashboard refuses to start the run if any of these are missing from a crew member's inventory:
+Players need these in their inventory before the dashboard will let them press **Start**. The list lives in `shared/contract.lua` under `itemsRequired` — add, remove, or change quantities freely.
 
-| Item id | Inventory label | Role |
+| Item id | Inventory label | Default role in the run |
 | --- | --- | --- |
 | `hacking_device` | DataJack | Security backdoor, office computers |
 | `laptop_pro` | Jackbox Pro | Vault panel |
@@ -49,11 +20,57 @@ The dashboard refuses to start the run if any of these are missing from a crew m
 | `electric_drill` | Cordless Drill | Lockers & safe |
 | `weapon_smg` (weapon) | SMG | Required loadout |
 
-The marketplace gates `laptop_pro` and `frequency_tuner` behind heist level 3 by default. `hacking_device` and `electric_drill` are level-1 unlocks.
+These items all need to exist in your ox_inventory (or equivalent) items list — see the [installation guide](/cc_paletoheist/installation).
 
-<Note>
-  Tool durability — successful minigames burn `5` durability, failures burn `10`. The frequency tuner burns `10` per use (no success/fail signal). Items break at 0% durability.
-</Note>
+## Contract defaults
+
+Defined in `shared/contract.lua`. Every field is editable.
+
+| Field | Default | What it does |
+| --- | --- | --- |
+| `id` | `paleto_heist` | Internal contract id |
+| `difficulty` | `medium` | Display tag in the dashboard |
+| `weight` | `0.5` | Rarity weight for marketplace drips |
+| `levelRequired` | `3` | Minimum heist level to purchase |
+| `price` | `2500` | VICE cost to buy the slot |
+| `crewSize` | `{ min = 2, max = 4 }` | Crew size bounds |
+| `duration` | `1200` | Soft cap in seconds before the slot auto-fails |
+| `cooldown` | `1800` | Server-wide cooldown after each completion |
+| `reward` | `{ vice = 1500, xp = 250 }` | Credited automatically on success |
+| `locations` | 1 | `paleto` — Blaine County Savings Bank |
+
+Coordinates, doors, cameras, and task points live in `shared/location.lua` and are all editable.
+
+## Loot table
+
+`shared/rewards.lua` defines the global loot. When `cfg.use_global_loot_table = true` (default), each category's rolled total is split across every unit in that category.
+
+```lua
+return {
+    lockers = {
+        { type = 'item', item = 'black_money', amount = { min = 1000, max = 2000 } },
+        { type = 'money',                       amount = { min = 1000, max = 2000 } },
+    },
+    trolleys = {
+        { type = 'item', item = 'black_money', amount = { min = 1000, max = 2000 } },
+        { type = 'money',                       amount = { min = 1000, max = 2000 } },
+    },
+}
+```
+
+Set `cfg.use_global_loot_table = false` to define loot per-unit inside `shared/location.lua`.
+
+## Other tunables
+
+`shared/config.lua`:
+
+| Field | Default | What it does |
+| --- | --- | --- |
+| `cfg.use_global_loot_table` | `true` | If `false`, expects per-unit `rewards` on each loot point |
+| `cfg.enable_task_list` | `true` | Show the TaskUI panel during the run |
+| `cfg.vault_timer` | `60` | Vault open delay in seconds |
+| `cfg.debug` | `false` | Bypasses gates and logs verbosely |
+| `cfg.dispatch` | `function(location) ... end` | Police alert payload — replace to integrate with your dispatch resource |
 
 ## Dependencies
 
@@ -61,26 +78,3 @@ The marketplace gates `laptop_pro` and `frequency_tuner` behind heist level 3 by
 - [`cc_lib`](/cc_lib/index) — TaskUI, Groups, Inventory, Target, Notification, Dispatch wrappers
 - `ox_lib`, `oxmysql`
 - A police job framework that responds to `cc.Dispatch.Alert`
-
-## Where things live
-
-```
-cc_paletoheist/
-├── client/
-│   ├── cl_main.lua       # task list, world state, minigame wiring
-│   ├── camera.lua        # security camera POV
-│   ├── animations.lua    # scene anims (escrowed)
-│   ├── functions.lua     # helpers (escrowed)
-│   └── minigames.lua     # minigame router (editable)
-├── server/
-│   ├── contract.lua      # RegisterContract call + cancel/reset
-│   ├── sv_main.lua       # task progression, loot distribution
-│   ├── functions.lua     # bank init/reset
-│   └── sync.lua          # active-location state
-└── shared/
-    ├── config.lua        # global loot flag, vault timer, dispatch, debug
-    ├── contract.lua      # contract definition (id, price, items, locations)
-    ├── rewards.lua       # global loot table (lockers, trolleys)
-    ├── location.lua      # task coords, doors, cameras, zones
-    └── models.lua        # trolley & loot prop models
-```

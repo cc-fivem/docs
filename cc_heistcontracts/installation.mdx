@@ -58,11 +58,9 @@ icon: 'rocket'
         label = 'Contracts Tablet',
         weight = 2800,
         stack = false,
-        client = { image = 'heist_tablet.png', export = 'cc_heistcontracts.heist_tablet' },
     },
     ```
 
-    The `client.export` field points at `exports('heist_tablet', ...)` in `client/main.lua`, which calls `openDashboard()`. If you're on a different inventory, wire the item's "use" handler to call `exports.cc_heistcontracts:heist_tablet()` on the client.
   </Step>
   <Step title="Verify in-game">
     Join the server, give yourself a `heist_tablet` (Contracts Tablet) item, and use it from your inventory. The dashboard should open and prompt you to pick an alias. The marketplace starts empty on a fresh boot — listings drip in one at a time on the configured interval (3 minutes by default), so the first contract appears after the first interval has elapsed.
