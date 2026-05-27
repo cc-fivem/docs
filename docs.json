@@ -81,13 +81,6 @@
             ]
           },
           {
-            "group": "Cargo Heist",
-            "pages": [
-              "cc_cargoheist/index",
-              "cc_cargoheist/installation"
-            ]
-          },
-          {
             "group": "Pacific Heist",
             "pages": [
               "cc_pacificheist/index",

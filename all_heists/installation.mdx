@@ -44,35 +44,46 @@ Follow this page if you own **all** heist modules. Each module also ships its ow
         
         signal_jammer = { label = 'Signal Jammer', weight = 400 },
         thermite = { label = 'Thermite Charge', weight = 800 },
-        angle_grinder = { label = 'Angle Grinder', weight = 2400, stack = false },
         ```
 
-        <Note>
-          The `weapon_pistol`, `weapon_smg`, `weapon_digiscanner`, and `weapon_assaultrifle` requirements are standard ox_inventory weapons — no extra config needed if you're on the stock weapons list.
-        </Note>
+        Add the following weapons to `ox_inventory/data/weapons.lua`
+
+        ```lua
+        ['WEAPON_DIGISCANNER'] = {
+			label = 'RF Sweeper',
+			weight = 12000,
+		},
+        ```
       </Tab>
       <Tab title="qb-inventory">
         Add the following items to `qb-core/shared/items.lua`
 
         ```lua
-        -- Fleeca
         hacking_device = { name = 'hacking_device', label = 'DataJack', weight = 600, unique = true, type = 'item', image = 'hacking_device.png', useable = false },
         laptop_cheap = { name = 'laptop_cheap', label = 'Refurb LiteBook', weight = 2500, unique = true, type = 'item', image = 'laptop_cheap.png', useable = false },
         electric_drill = { name = 'electric_drill', label = 'Cordless Drill', weight = 1800, unique = true, type = 'item', image = 'electric_drill.png', useable = false },
 
-        -- Paleto (hacking_device + electric_drill above are shared)
         laptop_pro = { name = 'laptop_pro', label = 'Jackbox Pro', weight = 2800, unique = true, type = 'item', image = 'laptop_pro.png', useable = false },
         frequency_tuner = { name = 'frequency_tuner', label = 'Signal Modulator', weight = 250, unique = false, type = 'item', image = 'frequency_tuner.png', useable = false },
 
-        -- Pacific (electric_drill above is shared)
         laptop_elite = { name = 'laptop_elite', label = 'BlackBook Mk-III', weight = 3200, unique = true, type = 'item', image = 'laptop_elite.png', useable = false },
         signal_jammer = { name = 'signal_jammer', label = 'Signal Jammer', weight = 400, unique = false, type = 'item', image = 'signal_jammer.png', useable = false },
         thermite = { name = 'thermite', label = 'Thermite Charge', weight = 800, unique = false, type = 'item', image = 'thermite.png', useable = false },
+        
+        weapon_digiscanner = { name = 'weapon_digiscanner', label = 'RF Sweeper', weight = 12000, unique = true, useable = false },
         ```
 
-        <Note>
-          The `weapon_pistol`, `weapon_smg`, `weapon_digiscanner`, and `weapon_assaultrifle` requirements are standard qb-inventory weapons — no extra config needed if you're on the stock weapons list.
-        </Note>
+        Add the following weapons to `qb-core/shared/weapons.lua`
+
+        ```lua
+        [`WEAPON_DIGISCANNER`] = {
+            name = 'weapon_digiscanner',
+			label = 'RF Sweeper',
+            weapontype = 'Miscellaneous',
+            ammotype = nil,
+            damagereason = 'Died'
+		},
+        ```
       </Tab>
     </Tabs>
   </Step>
@@ -1427,7 +1438,7 @@ end)
   <Step title="Verify in-game">
     1. Use a `heist_tablet` to open the dashboard.
     2. With drips on default (3 min), all four contracts roll into the marketplace within a few intervals. Lower `config.rotation.dripIntervalMs` in `cc_heistcontracts/shared/config.lua` (e.g. `5 * 1000`) and restart `cc_heistcontracts` to see them faster.
-    3. Each contract has its own level gate — Fleeca `1`, Paleto `3`, Pacific `5`, Cargo `1`. Use `/heist:grantxp <playerId> <amount>` if you've enabled the admin command.
+    3. Each contract has its own level gate — Fleeca `1`, Paleto `3`, Pacific `5`. Use `/heist:grantxp <playerId> <amount>` if you've enabled the admin command.
     4. Watch the server console on first Pacific run for `Streaming pacificheist resource 'cc_jammer.ytyp'` — no error means the custom jammer props are loading.
 
     <Tip>
