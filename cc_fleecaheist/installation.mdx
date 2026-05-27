@@ -17,32 +17,92 @@ icon: 'rocket'
   <Step title="Place the resource">
     Copy `cc_fleecaheist` into a resources directory the server loads. The repo ships under `resources/[cc]/cc_fleecaheist/`.
   </Step>
-  <Step title="Add the ox_inventory items">
-    The contract requires four items. If you're using ox_inventory, add them to `ox_inventory/data/items.lua` (the shipped Qbox config already has them at lines 815–830 of `items.lua`).
+  <Step title="Add the inventory items">
+    <Tabs>
+      <Tab title="ox_inventory">
+        Add the following items to `ox_inventory/data/items.lua`
 
+        ```lua
+        hacking_device = { label = 'DataJack', weight = 600, stack = false },
+        laptop_cheap = { label = 'Refurb LiteBook', weight = 2500, stack = false },
+        electric_drill = { label = 'Cordless Drill', weight = 1800, stack = false },
+        ```
+
+        Drop the matching item images into `ox_inventory/web/images/` (filenames must match the name of the item).
+        <Note>
+          The `weapon_pistol` requirement is a standard ox_inventory weapon — no extra config needed if you're on the stock weapons list.
+        </Note>
+      </Tab>
+      <Tab title="qb-inventory">
+        Add the following items to `qb-core/shared/items.lua`
+
+        ```lua
+        hacking_device = { name = 'hacking_device', label = 'DataJack', weight = 600, unique = true, type = 'item', image = 'hacking_device.png', useable = false },
+        laptop_cheap = { name = 'laptop_cheap', label = 'Refurb LiteBook', weight = 2500, unique = true, type = 'item', image = 'laptop_cheap.png', useable = false },
+        electric_drill = { name = 'electric_drill', label = 'Cordless Drill', weight = 1800, unique = true, type = 'item', image = 'electric_drill.png', useable = false },
+        ```
+
+        Drop the matching item images into `qb-inventory/html/images/` (filenames must match the image field).
+        <Note>
+          The `weapon_pistol` requirement is a standard qb-inventory weapon — no extra config needed if you're on the stock weapons list.
+        </Note>
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Configure gabz map-data">
+    Changes need to be made in `cfx-gabz-mapdata/gabz_entityset_mods1.lua`
+
+    Replace the gabz_fleeca0X_milo_ entries with this:
     ```lua
-    ['hacking_device'] = {
-        label = 'DataJack',
-        weight = 600,
-        stack = false,
-    },
-    ['laptop_cheap'] = {
-        label = 'Refurb LiteBook',
-        weight = 2500,
-        stack = false,
-    },
-    ['electric_drill'] = {
-        label = 'Cordless Drill',
-        weight = 1800,
-        stack = false,
-    },
+      {
+          ipl = 'gabz_fleeca01_milo_',
+          coords = { x = 309.74646, y = -277.644165, z = 53.2345963 },
+          entitySets = {
+              { name = 'room04_cashtrolley', enable = false }, -- bags and cash trolleys
+              { name = 'room05_cashtrolley', enable = false }, -- bags and cash trolleys
+          }
+      },
+      {
+          ipl = 'gabz_fleeca02_milo_',
+          coords = { x = 1179.74475, y = 2706.985, z = 37.15784 },
+          entitySets = {
+              { name = 'room04_cashtrolley', enable = false }, -- bags and cash trolleys
+              { name = 'room05_cashtrolley', enable = false }, -- bags and cash trolleys
+          }
+      },
+      {
+          ipl = 'gabz_fleeca03_milo_',
+          coords = { x = 145.416824, y = -1039.277, z = 28.4378834 },
+          entitySets = {
+              { name = 'room04_cashtrolley', enable = false }, -- bags and cash trolleys
+              { name = 'room05_cashtrolley', enable = false }, -- bags and cash trolleys
+          }
+      },
+      {
+          ipl = 'gabz_fleeca04_milo_',
+          coords = { x = -1216.7616, y = -333.000763, z = 36.85084 },
+          entitySets = {
+              { name = 'room04_cashtrolley', enable = false }, -- bags and cash trolleys
+              { name = 'room05_cashtrolley', enable = false }, -- bags and cash trolleys
+          }
+      },
+      {
+          ipl = 'gabz_fleeca05_milo_',
+          coords = { x = -355.435852, y = -48.5326, z = 48.1063843 },
+          entitySets = {
+              { name = 'room04_cashtrolley', enable = false }, -- bags and cash trolleys
+              { name = 'room05_cashtrolley', enable = false }, -- bags and cash trolleys
+          }
+      },
+      {
+          ipl = 'gabz_fleeca06_milo_',
+          coords = { x = -2962.59131, y = 478.238037, z = 14.7668953 },
+          entitySets = {
+              { name = 'room04_cashtrolley', enable = false }, -- bags and cash trolleys
+              { name = 'room05_cashtrolley', enable = false }, -- bags and cash trolleys
+          }
+      },
     ```
-
-    Drop the matching item images into `ox_inventory/web/images/` (filenames must match the `image` field).
-
-    <Note>
-      The `weapon_pistol` requirement is a standard ox_inventory weapon — no extra config needed if you're on the stock weapons list.
-    </Note>
   </Step>
   <Step title="Ensure after cc_heistcontracts">
     Order matters in `server.cfg`:
@@ -76,11 +136,9 @@ icon: 'rocket'
       Need it to appear instantly? Lower `config.rotation.dripIntervalMs` in `cc_heistcontracts/shared/config.lua` to `5 * 1000` and restart `cc_heistcontracts`.
     </Tip>
   </Step>
+
+
 </Steps>
-
-## No SQL migrations
-
-`cc_fleecaheist` has no schema of its own — completion state lives in `cc_heistcontracts.heist_profiles`. Make sure the three `cc_heistcontracts` migrations have already been applied.
 
 ## Customising loot
 
