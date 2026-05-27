@@ -1,0 +1,250 @@
+---
+title: "All Heists Installation"
+description: "One-shot setup for servers running every cc heist module: inventory items, gabz map-data, and load order in a single pass."
+icon: 'layer-group'
+---
+
+Follow this page if you own **all four** heist modules — `cc_fleecaheist`, `cc_paletoheist`, `cc_pacificheist`, and `cc_cargoheist`. Each module also ships its own installation page; this guide just consolidates the shared steps (inventory items, gabz mapdata, ensure order) so you only edit each file once.
+
+## Requirements
+
+- A FiveM server already running [cc_heistcontracts](/cc_heistcontracts/installation) — all four modules register contracts against it.
+- [ox_lib](https://github.com/overextended/ox_lib) and [oxmysql](https://github.com/overextended/oxmysql).
+- A working `cc_lib` resource.
+- An inventory system (defaults assume **ox_inventory**).
+- [ox_target](https://github.com/overextended/ox_target) and [ox_inventory](https://github.com/overextended/ox_inventory) — `cc_cargoheist` declares both as hard `fxmanifest.lua` dependencies.
+- Streaming enabled — `cc_pacificheist` ships custom jammer assets under `stream/`.
+
+## Steps
+
+<Steps>
+  <Step title="Place the resources">
+    Copy all four resources into a directory the server loads. The repo ships them under `resources/[cc]/`:
+
+    ```
+    resources/[cc]/cc_fleecaheist/
+    resources/[cc]/cc_paletoheist/
+    resources/[cc]/cc_pacificheist/
+    resources/[cc]/cc_cargoheist/
+    ```
+
+    The `stream/` folder inside `cc_pacificheist` must travel with it — the custom jammer props live there.
+  </Step>
+  <Step title="Add the inventory items">
+    Every item used by the four heists in one block. Drop the matching images into your inventory's images folder (filenames must match the item name / `image` field).
+
+    <Tabs>
+      <Tab title="ox_inventory">
+        Add the following items to `ox_inventory/data/items.lua`
+
+        ```lua
+        -- Fleeca
+        hacking_device = { label = 'DataJack', weight = 600, stack = false },
+        laptop_cheap = { label = 'Refurb LiteBook', weight = 2500, stack = false },
+        electric_drill = { label = 'Cordless Drill', weight = 1800, stack = false },
+
+        -- Paleto (hacking_device + electric_drill above are shared)
+        laptop_pro = { label = 'Jackbox Pro', weight = 2800, stack = false },
+        frequency_tuner = { label = 'Signal Modulator', weight = 250 },
+
+        -- Pacific (electric_drill above is shared)
+        laptop_elite = { label = 'BlackBook Mk-III', weight = 3200, stack = false },
+        signal_jammer = { label = 'Signal Jammer', weight = 400 },
+        thermite = { label = 'Thermite Charge', weight = 800 },
+
+        -- Cargo
+        angle_grinder = { label = 'Angle Grinder', weight = 2400, stack = false },
+        ```
+
+        <Note>
+          The `weapon_pistol`, `weapon_smg`, `weapon_digiscanner`, and `weapon_assaultrifle` requirements are standard ox_inventory weapons — no extra config needed if you're on the stock weapons list.
+        </Note>
+        <Note>
+          In the shipped Qbox `items.lua` the `thermite` entry exists but is **commented out** at line ~830. Uncomment it before launching `cc_pacificheist`.
+        </Note>
+      </Tab>
+      <Tab title="qb-inventory">
+        Add the following items to `qb-core/shared/items.lua`
+
+        ```lua
+        -- Fleeca
+        hacking_device = { name = 'hacking_device', label = 'DataJack', weight = 600, unique = true, type = 'item', image = 'hacking_device.png', useable = false },
+        laptop_cheap = { name = 'laptop_cheap', label = 'Refurb LiteBook', weight = 2500, unique = true, type = 'item', image = 'laptop_cheap.png', useable = false },
+        electric_drill = { name = 'electric_drill', label = 'Cordless Drill', weight = 1800, unique = true, type = 'item', image = 'electric_drill.png', useable = false },
+
+        -- Paleto (hacking_device + electric_drill above are shared)
+        laptop_pro = { name = 'laptop_pro', label = 'Jackbox Pro', weight = 2800, unique = true, type = 'item', image = 'laptop_pro.png', useable = false },
+        frequency_tuner = { name = 'frequency_tuner', label = 'Signal Modulator', weight = 250, unique = false, type = 'item', image = 'frequency_tuner.png', useable = false },
+
+        -- Pacific (electric_drill above is shared)
+        laptop_elite = { name = 'laptop_elite', label = 'BlackBook Mk-III', weight = 3200, unique = true, type = 'item', image = 'laptop_elite.png', useable = false },
+        signal_jammer = { name = 'signal_jammer', label = 'Signal Jammer', weight = 400, unique = false, type = 'item', image = 'signal_jammer.png', useable = false },
+        thermite = { name = 'thermite', label = 'Thermite Charge', weight = 800, unique = false, type = 'item', image = 'thermite.png', useable = false },
+
+        -- Cargo
+        angle_grinder = { name = 'angle_grinder', label = 'Angle Grinder', weight = 2400, unique = false, type = 'item', image = 'angle_grinder.png', useable = false },
+        ```
+
+        <Note>
+          The `weapon_pistol`, `weapon_smg`, `weapon_digiscanner`, and `weapon_assaultrifle` requirements are standard qb-inventory weapons — no extra config needed if you're on the stock weapons list.
+        </Note>
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="List the angle grinder in the cc_heistcontracts marketplace">
+    `angle_grinder` is the only heist tool that isn't sold by default. Open `cc_heistcontracts/shared/marketplace_config.lua` and add it under the `tools` category:
+
+    ```lua
+    tools = {
+        label = 'Tools',
+        items = {
+            { id = 'electric_drill', name = 'Cordless Drill', price = 450, levelRequired = 1 },
+            { id = 'angle_grinder',  name = 'Angle Grinder',  price = 900, levelRequired = 1 },
+        },
+    },
+    ```
+
+    Restart `cc_heistcontracts` after editing. Without this listing, players have no in-script way to acquire the grinder for `cc_cargoheist`.
+  </Step>
+  <Step title="Configure gabz map-data">
+    All entries live in `cfx-gabz-mapdata/gabz_entityset_mods1.lua`. Replace each existing entry with the block below — every change is disabling a `*_trolleys` or `*_cashtrolley` set, because the heist resources spawn their own trolley props during a run and the gabz sets would duplicate them.
+
+    **Fleeca — replace all six `gabz_fleeca0X_milo_` entries:**
+    ```lua
+      {
+          ipl = 'gabz_fleeca01_milo_',
+          coords = { x = 309.74646, y = -277.644165, z = 53.2345963 },
+          entitySets = {
+              { name = 'room04_cashtrolley', enable = false }, -- bags and cash trolleys
+              { name = 'room05_cashtrolley', enable = false }, -- bags and cash trolleys
+          }
+      },
+      {
+          ipl = 'gabz_fleeca02_milo_',
+          coords = { x = 1179.74475, y = 2706.985, z = 37.15784 },
+          entitySets = {
+              { name = 'room04_cashtrolley', enable = false }, -- bags and cash trolleys
+              { name = 'room05_cashtrolley', enable = false }, -- bags and cash trolleys
+          }
+      },
+      {
+          ipl = 'gabz_fleeca03_milo_',
+          coords = { x = 145.416824, y = -1039.277, z = 28.4378834 },
+          entitySets = {
+              { name = 'room04_cashtrolley', enable = false }, -- bags and cash trolleys
+              { name = 'room05_cashtrolley', enable = false }, -- bags and cash trolleys
+          }
+      },
+      {
+          ipl = 'gabz_fleeca04_milo_',
+          coords = { x = -1216.7616, y = -333.000763, z = 36.85084 },
+          entitySets = {
+              { name = 'room04_cashtrolley', enable = false }, -- bags and cash trolleys
+              { name = 'room05_cashtrolley', enable = false }, -- bags and cash trolleys
+          }
+      },
+      {
+          ipl = 'gabz_fleeca05_milo_',
+          coords = { x = -355.435852, y = -48.5326, z = 48.1063843 },
+          entitySets = {
+              { name = 'room04_cashtrolley', enable = false }, -- bags and cash trolleys
+              { name = 'room05_cashtrolley', enable = false }, -- bags and cash trolleys
+          }
+      },
+      {
+          ipl = 'gabz_fleeca06_milo_',
+          coords = { x = -2962.59131, y = 478.238037, z = 14.7668953 },
+          entitySets = {
+              { name = 'room04_cashtrolley', enable = false }, -- bags and cash trolleys
+              { name = 'room05_cashtrolley', enable = false }, -- bags and cash trolleys
+          }
+      },
+    ```
+
+    **Pacific — replace the `gabz_sm_pb_milo` entry:**
+    ```lua
+      {
+          ipl = 'gabz_sm_pb_milo',
+          coords = { x = 260.01200000, y = 220.73300000, z = 108.64600000 },
+          entitySets = {
+              { name = 'room01_entrance', enable = true },
+              { name = 'room02_mainhall', enable = true },
+              { name = 'room03_sideentrance', enable = true },
+              { name = 'room04_roofstairs', enable = true },
+              { name = 'room05_office01', enable = true },
+              { name = 'room06_office02', enable = true },
+              { name = 'room07_office03', enable = true },
+              { name = 'room08_office04', enable = true },
+              { name = 'room09_office05', enable = true },
+              { name = 'room10_office06', enable = true },
+              { name = 'room11_office07', enable = true },
+              { name = 'room12_office08', enable = true },
+              { name = 'room13_mainoffice', enable = true },
+              { name = 'room14_vaultstairs', enable = true },
+              { name = 'room15_vaultbasement', enable = true },
+              { name = 'room16_vault', enable = true },
+              { name = 'room16_vault_trolleys', enable = false }, -- cash trolleys (cc_pacificheist spawns its own)
+          }
+      },
+    ```
+
+    **Paleto — replace the `gabz_paletobank_milo_` entry:**
+    ```lua
+      {
+          ipl = 'gabz_paletobank_milo_',
+          coords = { x = -106.037, y = 6467.548, z = 32.169 },
+          entitySets = {
+              { name = 'palbank_vault_trolleys', enable = false }, -- gold and cash trolleys (cc_paletoheist spawns its own)
+          }
+      },
+    ```
+
+    `cc_cargoheist` doesn't need gabz changes — its LSIA container site is anchored to the Tuner DLC asset pack, not a gabz interior.
+  </Step>
+  <Step title="Ensure after cc_heistcontracts">
+    Final order in `server.cfg`:
+
+    ```
+    ensure oxmysql
+    ensure ox_lib
+    ensure ox_inventory
+    ensure ox_target
+    ensure cc_lib
+    ensure cc_heistcontracts
+    ensure cc_fleecaheist
+    ensure cc_paletoheist
+    ensure cc_pacificheist
+    ensure cc_cargoheist
+    ```
+
+    Each module's `fxmanifest.lua` declares `cc_heistcontracts` as a dependency, so FXServer will refuse to start any of them before the parent is up. Wrong order = `No such export RegisterContract in resource cc_heistcontracts`.
+  </Step>
+  <Step title="(Optional) Tune the police gate">
+    Fleeca is the only heist with a stock police-count gate. Edit `cc_fleecaheist/shared/contract.lua`:
+
+    ```lua
+    requiredPolice = { jobs = { 'police' }, count = 2 }
+    ```
+
+    Set `count = 0` (or remove the field) to disable the gate for testing.
+  </Step>
+  <Step title="Verify in-game">
+    1. Use a `heist_tablet` to open the dashboard.
+    2. With drips on default (3 min), all four contracts roll into the marketplace within a few intervals. Lower `config.rotation.dripIntervalMs` in `cc_heistcontracts/shared/config.lua` (e.g. `5 * 1000`) and restart `cc_heistcontracts` to see them faster.
+    3. Each contract has its own level gate — Fleeca `1`, Paleto `3`, Pacific `5`, Cargo `1`. Use `/heist:grantxp <playerId> <amount>` if you've enabled the admin command.
+    4. Watch the server console on first Pacific run for `Streaming pacificheist resource 'cc_jammer.ytyp'` — no error means the custom jammer props are loading.
+
+    <Tip>
+      Setting `cfg.debug = true` in each heist's `shared/config.lua` bypasses level / police / cooldown gates so you can chain runs while testing.
+    </Tip>
+  </Step>
+</Steps>
+
+## Per-heist details
+
+This page only covers the consolidated steps. For loot tables, branch disabling, jammer tuning, vault timers, dispatch callbacks, and other per-heist tunables, see each module's own page:
+
+- [Fleeca Heist](/cc_fleecaheist/index) · [installation](/cc_fleecaheist/installation)
+- [Paleto Heist](/cc_paletoheist/index) · [installation](/cc_paletoheist/installation)
+- [Pacific Heist](/cc_pacificheist/index) · [installation](/cc_pacificheist/installation)
+- [Cargo Heist](/cc_cargoheist/index) · [installation](/cc_cargoheist/installation)

@@ -17,32 +17,55 @@ icon: 'rocket'
   <Step title="Place the resource">
     Copy `cc_paletoheist` into a resources directory the server loads. The repo ships under `resources/[cc]/cc_paletoheist/`.
   </Step>
-  <Step title="Add the ox_inventory items">
-    Five items must exist in your inventory system. With **ox_inventory**, add these to `ox_inventory/data/items.lua` (the shipped Qbox config has them already):
+  <Step title="Add the inventory items">
+    <Tabs>
+      <Tab title="ox_inventory">
+        Add the following items to `ox_inventory/data/items.lua`
 
+        ```lua
+        hacking_device = { label = 'DataJack', weight = 600, stack = false },
+        laptop_pro = { label = 'Jackbox Pro', weight = 2800, stack = false },
+        frequency_tuner = { label = 'Signal Modulator', weight = 250 },
+        electric_drill = { label = 'Cordless Drill', weight = 1800, stack = false },
+        ```
+
+        Drop the matching item images into `ox_inventory/web/images/` (filenames must match the name of the item).
+        <Note>
+          The `weapon_smg` requirement is a standard ox_inventory weapon — no extra config needed if you're on the stock weapons list.
+        </Note>
+      </Tab>
+      <Tab title="qb-inventory">
+        Add the following items to `qb-core/shared/items.lua`
+
+        ```lua
+        hacking_device = { name = 'hacking_device', label = 'DataJack', weight = 600, unique = true, type = 'item', image = 'hacking_device.png', useable = false },
+        laptop_pro = { name = 'laptop_pro', label = 'Jackbox Pro', weight = 2800, unique = true, type = 'item', image = 'laptop_pro.png', useable = false },
+        frequency_tuner = { name = 'frequency_tuner', label = 'Signal Modulator', weight = 250, unique = false, type = 'item', image = 'frequency_tuner.png', useable = false },
+        electric_drill = { name = 'electric_drill', label = 'Cordless Drill', weight = 1800, unique = true, type = 'item', image = 'electric_drill.png', useable = false },
+        ```
+
+        Drop the matching item images into `qb-inventory/html/images/` (filenames must match the image field).
+        <Note>
+          The `weapon_smg` requirement is a standard qb-inventory weapon — no extra config needed if you're on the stock weapons list.
+        </Note>
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Configure gabz map-data">
+    Changes need to be made in `cfx-gabz-mapdata/gabz_entityset_mods1.lua`
+
+    Replace the `gabz_paletobank_milo_` entry with this:
     ```lua
-    ['hacking_device'] = {
-        label = 'DataJack',
-        weight = 600,
-        stack = false,
-    },
-    ['laptop_pro'] = {
-        label = 'Jackbox Pro',
-        weight = 2800,
-        stack = false,
-    },
-    ['frequency_tuner'] = {
-        label = 'Signal Modulator',
-        weight = 250,
-    },
-    ['electric_drill'] = {
-        label = 'Cordless Drill',
-        weight = 1800,
-        stack = false,
-    },
+      {
+          ipl = 'gabz_paletobank_milo_',
+          coords = { x = -106.037, y = 6467.548, z = 32.169 },
+          entitySets = {
+              { name = 'palbank_vault_trolleys', enable = false }, -- gold and cash trolleys (cc_paletoheist spawns its own)
+          }
+      },
     ```
 
-    Drop the matching item images into `ox_inventory/web/images/`. `weapon_smg` is the standard ox_inventory SMG — no extra config needed.
+    The `palbank_vault_trolleys` entry must be disabled — `cc_paletoheist` spawns its own trolley props during the run and the gabz set would duplicate them.
   </Step>
   <Step title="Ensure after cc_heistcontracts">
     Order in `server.cfg`:

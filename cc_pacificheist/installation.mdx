@@ -18,35 +18,74 @@ icon: 'rocket'
   <Step title="Place the resource">
     Copy `cc_pacificheist` into a resources directory the server loads. The repo ships under `resources/[cc]/cc_pacificheist/`. The `stream/` folder must travel with it — the custom jammer props live there.
   </Step>
-  <Step title="Add the ox_inventory items">
-    Six items are required; the laptop and digiscanner are already in the Qbox-shipped `items.lua` but the signal jammer and thermite need adding if they're commented out. Open `ox_inventory/data/items.lua`:
+  <Step title="Add the inventory items">
+    <Tabs>
+      <Tab title="ox_inventory">
+        Add the following items to `ox_inventory/data/items.lua`
 
+        ```lua
+        laptop_elite = { label = 'BlackBook Mk-III', weight = 3200, stack = false },
+        signal_jammer = { label = 'Signal Jammer', weight = 400 },
+        thermite = { label = 'Thermite Charge', weight = 800 },
+        electric_drill = { label = 'Cordless Drill', weight = 1800, stack = false },
+        ```
+
+        Drop the matching item images into `ox_inventory/web/images/` (filenames must match the name of the item).
+        <Note>
+          The `weapon_digiscanner` and `weapon_assaultrifle` requirements are standard ox_inventory weapons — no extra config needed if you're on the stock weapons list.
+        </Note>
+        <Note>
+          In the shipped Qbox `items.lua` the `thermite` entry exists but is **commented out** at line ~830. Uncomment it before launching this heist.
+        </Note>
+      </Tab>
+      <Tab title="qb-inventory">
+        Add the following items to `qb-core/shared/items.lua`
+
+        ```lua
+        laptop_elite = { name = 'laptop_elite', label = 'BlackBook Mk-III', weight = 3200, unique = true, type = 'item', image = 'laptop_elite.png', useable = false },
+        signal_jammer = { name = 'signal_jammer', label = 'Signal Jammer', weight = 400, unique = false, type = 'item', image = 'signal_jammer.png', useable = false },
+        thermite = { name = 'thermite', label = 'Thermite Charge', weight = 800, unique = false, type = 'item', image = 'thermite.png', useable = false },
+        electric_drill = { name = 'electric_drill', label = 'Cordless Drill', weight = 1800, unique = true, type = 'item', image = 'electric_drill.png', useable = false },
+        ```
+
+        Drop the matching item images into `qb-inventory/html/images/` (filenames must match the image field).
+        <Note>
+          The `weapon_digiscanner` and `weapon_assaultrifle` requirements are standard qb-inventory weapons — no extra config needed if you're on the stock weapons list.
+        </Note>
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Configure gabz map-data">
+    Changes need to be made in `cfx-gabz-mapdata/gabz_entityset_mods1.lua`
+
+    Replace the `gabz_sm_pb_milo` entry with this:
     ```lua
-    ['laptop_elite'] = {
-        label = 'BlackBook Mk-III',
-        weight = 3200,
-        stack = false,
-    },
-    ['signal_jammer'] = {
-        label = 'Signal Jammer',
-        weight = 400,
-    },
-    ['thermite'] = {
-        label = 'Thermite Charge',
-        weight = 800,
-    },
-    ['electric_drill'] = {
-        label = 'Cordless Drill',
-        weight = 1800,
-        stack = false,
-    },
+      {
+          ipl = 'gabz_sm_pb_milo',
+          coords = { x = 260.01200000, y = 220.73300000, z = 108.64600000 },
+          entitySets = {
+              { name = 'room01_entrance', enable = true },
+              { name = 'room02_mainhall', enable = true },
+              { name = 'room03_sideentrance', enable = true },
+              { name = 'room04_roofstairs', enable = true },
+              { name = 'room05_office01', enable = true },
+              { name = 'room06_office02', enable = true },
+              { name = 'room07_office03', enable = true },
+              { name = 'room08_office04', enable = true },
+              { name = 'room09_office05', enable = true },
+              { name = 'room10_office06', enable = true },
+              { name = 'room11_office07', enable = true },
+              { name = 'room12_office08', enable = true },
+              { name = 'room13_mainoffice', enable = true },
+              { name = 'room14_vaultstairs', enable = true },
+              { name = 'room15_vaultbasement', enable = true },
+              { name = 'room16_vault', enable = true },
+              { name = 'room16_vault_trolleys', enable = false }, -- cash trolleys (cc_pacificheist spawns its own)
+          }
+      },
     ```
 
-    Drop matching images into `ox_inventory/web/images/`. `weapon_digiscanner` and `weapon_assaultrifle` are vanilla weapon hashes — make sure they're not removed from your weapons list.
-
-    <Note>
-      In the shipped Qbox `items.lua` the `thermite` entry exists but is **commented out** at line ~830. Uncomment it before launching this heist.
-    </Note>
+    The `room16_vault_trolleys` entry must be disabled — `cc_pacificheist` spawns its own trolley props during the run and the gabz set would duplicate them.
   </Step>
   <Step title="Ensure after cc_heistcontracts">
     Order in `server.cfg`:

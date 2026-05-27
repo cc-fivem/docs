@@ -61,6 +61,12 @@
             ]
           },
           {
+            "group": "All Heists",
+            "pages": [
+              "all_heists/installation"
+            ]
+          },
+          {
             "group": "Fleeca Heist",
             "pages": [
               "cc_fleecaheist/index",
