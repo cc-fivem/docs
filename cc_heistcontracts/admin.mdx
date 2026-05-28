@@ -45,42 +45,6 @@ If the alias doesn't exist:
 
 Other failure codes: `invalid_amount` (zero/negative), `db` (UPDATE didn't affect any rows).
 
-## The legacy `StartContract` export
-
-There used to be three un-restricted dev commands (`/heist:test`, `/heist:test2`, `/heist:test3`) that exercised this path. They've been removed from the shipped resource — the export itself still exists for back-compat with old wrappers:
-
-```lua
-exports.cc_heistcontracts:StartContract('cool_bank', { group = 'test', location = { id = 'main' } })
-```
-
-It bypasses the slot/purchase/VICE flow **and** the active-slot tracking, so `FinishContract` returns `'not_active'` for a player started this way. Fine for one-off testing from console; don't wire production gameplay through it.
-
-## Resetting a profile (manual)
-
-There's no command for this — it's straight SQL:
-
-```sql
-DELETE FROM heist_profiles WHERE citizenid = 'ABC12345';
-```
-
-The next time the player opens the dashboard, a fresh row is inserted with level 1, 0 XP, 0 VICE, no slots, no stats, no training. They'll be prompted for an alias again.
-
-To wipe just XP without losing the alias and ledger:
-
-```sql
-UPDATE heist_profiles SET level = 1, xp = 0 WHERE citizenid = 'ABC12345';
-```
-
-Cache will be stale until they reconnect — alternatively, push them off the server so `playerDropped` evicts them, or restart `cc_heistcontracts` to flush the entire cache.
-
-## Recovering a stuck active slot
-
-If a heist fails to call `FinishContract` (resource crashed, third-party heist doesn't integrate cleanly), a player can end up with a permanently "active" slot they can't start or discard. Since `activeSlot` is in-memory only, the easiest fixes are:
-
-- **Have the player rejoin** — `playerDropped` evicts their profile from the cache, and on reconnect they come back with `activeSlot = nil`.
-- **Restart `cc_heistcontracts`** — clears the in-memory cache for every player. Heavy-handed; only do this if multiple players are stuck.
-- **Use the dashboard's Give Up button** — if the heist resource doesn't implement `CancelHeist`, the give-up path falls back to freeing just the abandoner's slot locally. The player sees a toast explaining this.
-
 ## Debug logging
 
 `config.debug = true` in `shared/config.lua` toggles `[DEBUG]` lines from `utils.dprint`. Default is **off** in the shipped config — flip it on locally when investigating. Useful lines you'll see:
