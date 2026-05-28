@@ -16,16 +16,15 @@ icon: 'rocket'
   <Step title="Place the resource">
     Copy the `cc_heistcontracts` folder into a resources directory the server already loads. The repo ships under `resources/[cc]/cc_heistcontracts/`.
   </Step>
-  <Step title="Run the SQL migrations">
-    The schema is split across three files. Run them **in order** against your MySQL database:
+  <Step title="Run the SQL file">
+    Run the provided SQL file. 
 
+    If on Linux:
     ```bash
-    mysql your_db < sql/001_heist_profiles.sql
-    mysql your_db < sql/002_alias.sql
-    mysql your_db < sql/003_training.sql
+    mysql your_db < sql/install.sql
     ```
 
-    Or paste them into your MySQL client. Each migration is idempotent on a fresh install (`CREATE TABLE IF NOT EXISTS`); the `ALTER TABLE` statements will fail if you re-run them on a database that already has those columns — that's expected.
+    Or paste it into your MySQL client.
   </Step>
   <Step title="Ensure after the dependencies">
     Order matters in `server.cfg`:
@@ -34,7 +33,7 @@ icon: 'rocket'
     ensure oxmysql
     ensure ox_lib
     ensure cc_lib
-    ensure cc_minigames     # optional, only if training entries reference it
+    ensure cc_minigames
     ensure cc_heistcontracts
     ```
 
@@ -54,60 +53,14 @@ icon: 'rocket'
     The dashboard is opened by using an inventory item, not a key or chat command. With ox_inventory, the shipped definition is:
 
     ```lua
-    ['heist_tablet'] = {
-        label = 'Contracts Tablet',
-        weight = 2800,
-        stack = false,
-    },
+    heist_tablet = { label = 'Contracts Tablet', weight = 2800, stack = false, },
     ```
-
   </Step>
   <Step title="Verify in-game">
     Join the server, give yourself a `heist_tablet` (Contracts Tablet) item, and use it from your inventory. The dashboard should open and prompt you to pick an alias. The marketplace starts empty on a fresh boot — listings drip in one at a time on the configured interval (3 minutes by default), so the first contract appears after the first interval has elapsed.
 
     <Tip>
-      Want listings immediately for testing? Lower `config.rotation.dripIntervalMs` in `shared/config.lua` to something like `5 * 1000` (5 seconds) and restart the resource. Don't forget to put it back before production.
+      Want listings immediately for testing? Lower `config.rotation.dripIntervalMs` in `shared/config.lua` to something like `5 * 1000` (5 seconds) and restart the resource.
     </Tip>
   </Step>
 </Steps>
-
-## Database schema
-
-After all three migrations run, you should have one table:
-
-```sql
-heist_profiles (
-    citizenid           VARCHAR(50)  PRIMARY KEY,
-    alias               VARCHAR(32)  NULL UNIQUE,
-    level               INT          NOT NULL DEFAULT 1,
-    xp                  INT          NOT NULL DEFAULT 0,
-    vice_balance        INT          NOT NULL DEFAULT 0,
-    slots               TEXT         NULL,    -- JSON: array of { contractId, acquiredAt }
-    stats               TEXT         NULL,    -- JSON: completed/failed/byContract/...
-    cooldowns           TEXT         NULL,    -- JSON: reserved
-    ledger              TEXT         NULL,    -- JSON: last 50 VICE entries
-    training_unlocked   TINYINT(1)   NOT NULL DEFAULT 0,
-    training_minigames  TEXT         NULL,    -- JSON: { [minigame_id] = true }
-    created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                     ON UPDATE CURRENT_TIMESTAMP
-)
-```
-
-A new row is inserted on the first dashboard open for each `citizenid`. Profiles are cached in memory while the player is online and flushed every 30 seconds, on player drop, on resource stop, and on alias change.
-
-<Note>
-  Active-heist state (which slot is currently running, when it started) is **in-memory only** — it doesn't live in the database. A server restart wipes the in-flight state of every player, on purpose: the heist's world state is reset by the restart too, so a leftover "active" flag would lock a player out of an otherwise-fresh contract.
-</Note>
-
-## Building the dashboard UI from source
-
-The `web/` folder ships pre-built. If you want to modify the React app:
-
-```bash
-cd ui
-npm install
-npm run build
-```
-
-The Vite config writes to `../web/` so the resource picks it up next ensure. Don't add `web/` to your `.gitignore` — it's the runtime artifact, not a build cache.

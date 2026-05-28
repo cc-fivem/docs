@@ -4,7 +4,7 @@ description: "A heist contract marketplace, dashboard, and progression system fo
 icon: 'star'
 ---
 
-`cc_heistcontracts` is the central hub other heist resources plug into. It owns:
+`cc_heistcontracts` is the central hub other heist resources plug into. It contains:
 
 - The **player profile** (level, XP, VICE balance, contract slots, completion stats, alias).
 - The **dashboard NUI** — opened by using the `heist_tablet` (Contracts Tablet) inventory item — where players see available contracts, manage slots, shop the marketplace, and practice in the training sandbox.
@@ -16,48 +16,7 @@ icon: 'star'
 - A **training sandbox** that gates [cc_minigames](/cc_minigames/index) games behind level + VICE unlocks.
 - A **crew (group) layer** wrapping `cc_lib.Groups`.
 
-## Mental model
-
-The whole integration lives in **one `RegisterContract` call** — no extra exports on the heist resource. A custom wrapper for a third-party heist can be a single Lua file.
-
-```lua
-exports.cc_heistcontracts:RegisterContract({
-    id = 'fleeca_heist',
-    title = 'Fleeca Branch Heist',
-    description = 'Hit a Fleeca branch. Low risk, low reward.',
-    difficulty = 'easy',
-    weight = 1.0,
-    levelRequired = 1,
-    price = 2500,
-    crewSize = { min = 2, max = 4 },
-    duration = 1200,
-    reward = { vice = 1500, cash = 12000, xp = 250 },
-    locations = { { id = 'pinkcage', label = 'Pinkcage Branch' } },
-}, function(runtimeData)
-    -- runtimeData = { contractId, acquiredAt, startedBy, slotIndex, group, location? }
-    exports.your_heist:Start({ group = runtimeData.group, location = runtimeData.location })
-
-    -- Listen for your heist's completion event. Scoped to this run via the
-    -- group match, and removed after it fires so we don't stack handlers.
-    local handler
-    handler = AddEventHandler('your_heist:complete', function(group, success)
-        if group ~= runtimeData.group then return end
-        RemoveEventHandler(handler)
-        exports.cc_heistcontracts:FinishHeist(group, success)
-    end)
-end, {
-    cancel = function(ctx)
-        -- ctx = { src, group, contractId, slotIndex }
-        -- Tear the heist down for ctx.group. Slots are freed automatically.
-        exports.your_heist:Abort(ctx.group)
-    end,
-})
-```
-
-That's it. VICE and XP rewards are credited automatically on success. Cash and inventory rewards remain the heist's responsibility — `cc_heistcontracts` doesn't touch player money or inventory directly. The `cancel` callback is optional; if you omit it, the dashboard hides the Give Up button.
-
 ## Capabilities at a glance
-
 <Columns cols={2}>
   <Card title="Register contracts" icon="plug" href="/cc_heistcontracts/registering-contracts">
     One `RegisterContract` call with optional `cancel` + `reset` callbacks in `opts`. Plus `FinishHeist`/`FinishContract` to signal completion, and `ApplyCooldown` for server-wide locks.
@@ -85,29 +44,3 @@ That's it. VICE and XP rewards are credited automatically on success. Cash and i
 - [`oxmysql`](https://github.com/overextended/oxmysql)
 - `cc_lib` (Core, Groups, Inventory, Target, TaskUI wrappers)
 - [`cc_minigames`](/cc_minigames/index) — only required if you wire training entries to them (the default config does)
-
-## Where things live
-
-```
-cc_heistcontracts/
-├── client/main.lua              # NUI bridge, dashboard open/close, ox_target pickup zone
-├── server/
-│   ├── registry.lua             # contract definitions in memory, owner resource, cooldowns
-│   ├── profile.lua              # heist_profiles CRUD + cache + level/XP curve + alias + activeSlot
-│   ├── rotation.lua             # weighted drip thread + expiry sweep
-│   ├── purchase.lua             # buy / discard / start / finish / transfer slot flow
-│   ├── marketplace.lua          # VICE checkout, pickup rolling
-│   ├── training.lua             # training unlocks
-│   ├── sync.lua                 # net event router; bootstrap/profile/rotation/crew payloads
-│   └── main.lua                 # public exports + admin commands
-├── shared/
-│   ├── config.lua               # currency (incl. starting balance), rotation drip, slots, invite expiry, XP curve
-│   ├── marketplace_config.lua   # categories/items + pickup locations
-│   └── training_config.lua      # access price + per-minigame unlock list
-├── sql/
-│   ├── 001_heist_profiles.sql
-│   ├── 002_alias.sql
-│   └── 003_training.sql
-├── ui/                          # React/Vite source (build outputs to web/)
-└── web/                         # built dashboard (index.html + assets/*)
-```

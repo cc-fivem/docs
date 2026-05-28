@@ -79,10 +79,6 @@ config.inviteExpiryMs = 60 * 1000
 
 Applies to both contract transfer invites and crew invites. After this elapses, the invite auto-cleans server-side.
 
-### Opening the dashboard
-
-There's no `openKey` and no chat command — the dashboard is opened by using the **`heist_tablet`** (Contracts Tablet) inventory item. The item's use handler calls the `exports('heist_tablet', ...)` export in `client/main.lua`, which runs `openDashboard()`. See [Installation → Register the heist_tablet item](/cc_heistcontracts/installation) for how this is wired up.
-
 ### XP / leveling
 
 The XP curve is configurable two ways. Quadratic by default:
@@ -174,7 +170,7 @@ M.locations = {
 | `window` | Pickup time window in seconds. After this elapses, the pickup is dropped server-side and the player loses the items. The default for shipped locations is 600 (10 minutes). |
 | `radius` | ox_target sphere radius. Defaults to `0.6` if omitted. |
 
-On checkout, the server picks one location uniformly at random and starts a `setTimeout(window * 1000)` to drop the pickup if it's not claimed.
+On checkout, the server picks one location uniformly at random and starts a timer to drop the pickup if it's not claimed.
 
 <Note>
   Multiple checkouts by the same player while a pickup is still active **merge** into the existing pickup instead of rolling a new location. Item quantities are summed; the original deadline is preserved.
@@ -216,10 +212,3 @@ Each entry is one practice card in the dashboard's Training tab.
 | `levelRequired` | No | Hides name/buttons and shows a red ring with the required level until the player reaches it. Server enforces too. |
 
 A lookup index `config.byId` is built once on require. Don't mutate it directly; rebuild by editing `config.minigames` and restarting.
-
-### Custom-source contract for the `invoke` function
-
-- Runs **client-side**, in this resource's context, inside a `CreateThread`.
-- Wrapped in `pcall`; throwing inside `invoke` is logged and treated as failure.
-- Return value `true` = pass, anything else = fail. The result is sent to the dashboard NUI as a `trainingFinished` event.
-- The dashboard closes before invocation. Re-open it manually if your minigame needs the dashboard up.

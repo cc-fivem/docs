@@ -54,6 +54,7 @@
               "cc_heistcontracts/installation",
               "cc_heistcontracts/configuration",
               "cc_heistcontracts/registering-contracts",
+              "cc_heistcontracts/exports",
               "cc_heistcontracts/dashboard",
               "cc_heistcontracts/marketplace",
               "cc_heistcontracts/training",

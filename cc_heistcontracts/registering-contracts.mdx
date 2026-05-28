@@ -119,8 +119,6 @@ Both are optional. The Give Up button on the dashboard is **hidden** when `cance
 | `objectives` | array of strings | `{}` | Display-only checklist in the dashboard. |
 | `cooldown` | int (seconds) | `0` | Server-wide cooldown duration. Stamped only when you call `ApplyCooldown`. While active, `Purchase.Start` rejects with `'on_cooldown'` for everyone. `0` disables. See [Cooldowns](#cooldowns). |
 
-Anything outside this list is silently dropped by the normalizer — see `server/registry.lua:normalize` for the full list.
-
 ### What happens after registration
 
 <Steps>
@@ -235,10 +233,6 @@ AddEventHandler('cool_bank:complete', function(group, success)
 end)
 ```
 
-<Note>
-  If you need to award bonus VICE or XP outside of what's in the contract's `reward` (e.g. for a hidden objective), call `_G.HeistProfile.AddVice(src, amount, note)` or `_G.HeistProfile.AddXp(src, amount)` directly, then `_G.HeistSync.SendProfile(src)`. Note that this reaches into internals — the public contract is the `reward` table on registration.
-</Note>
-
 ## Cooldowns
 
 Cooldowns are **server-wide per contract**, not per player. Set `cooldown = <seconds>` on the contract and call `ApplyCooldown` from your entry point when the heist starts (or when it ends — your choice). While the cooldown is active, `Purchase.Start` rejects with `'on_cooldown'` for every player. Buying is **not** blocked — players can still acquire a slot during cooldown, they just can't start it until the timer ends.
@@ -330,7 +324,7 @@ That's the entire wrapper. **No edits to the escrowed heist itself.**
 
 **What if the escrowed heist doesn't expose an abort?** Omit `opts.cancel`. The Give Up button will be hidden on the dashboard — players have to finish or wait it out.
 
-**What if the escrowed heist doesn't fire a completion event?** That's the one case you genuinely can't wrap around. Players' slots will get stuck "active" because nothing ever calls `FinishHeist`. Fall back to one of the [stuck-slot recovery options](/cc_heistcontracts/admin#recovering-a-stuck-active-slot), or ask the escrowed heist's author to add an event.
+**What if the escrowed heist doesn't fire a completion event?** That's the one case you genuinely can't wrap around. Players' slots will get stuck "active" because nothing ever calls `FinishHeist`. Ask the escrowed heist's author to add an event.
 
 Add `cc_heistcontracts` and `cc_lib` to your wrapper's `fxmanifest.lua` dependencies so boot order is correct:
 
@@ -341,19 +335,3 @@ dependencies {
     'cc_lib',
 }
 ```
-
-## The legacy `StartContract` export
-
-```lua
-exports.cc_heistcontracts:StartContract('cool_bank', { group = 'test', location = { id = 'main' } })
-```
-
-Directly invokes a contract's entry point, bypassing the slot/purchase/VICE flow, the active-slot tracking, **and the cooldown gate**. Still exported for back-compat with old wrapper scripts (the previously-shipped `/heist:test*` debug commands have been removed), but new integrations should use the dashboard-driven slot flow. A contract started this way has no active slot, so `FinishContract` will return `'not_active'` for the player.
-
-## Cross-resource events
-
-| Event | When it fires | Use case |
-| --- | --- | --- |
-| `cc_heistcontracts:rotationChanged` | Server-local; fired right after a listing is added, removed, expired, or consumed. | Notify a Discord webhook, refresh a separate UI, etc. |
-
-For player-action wiring (purchases, transfers, training unlocks) you generally don't need to listen — the slot-fill / VICE debit is already routed through `Profile`, which you can read at any time via `_G.HeistProfile.GetBySrc(src)`.
