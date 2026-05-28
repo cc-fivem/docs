@@ -1,0 +1,44 @@
+---
+title: "Introduction"
+description: "Standalone fishing resource with rods, baits, nets, treasure hunts, tournaments, daily challenges, and a dynamic market."
+icon: 'fish'
+---
+
+`cc_fishing` is a self-contained fishing resource. Players buy gear from an NPC, cast in defined zones, catch tier-weighted fish, sell at a dynamic-pricing pawnshop, and progress through 30 levels. Optional modules layer on nets, ocean-floor treasure hunts, daily challenges, a weekly tournament, and short-form active tournaments.
+
+## Modules
+
+Each module is a toggle in `shared/config.lua` under `cfg.modules`. Turn off what you don't want.
+
+| Module | Default | What it adds |
+| --- | --- | --- |
+| `level` | `on` | XP, level thresholds, level-gated equipment |
+| `sales` | `on` | Pawnshop NPC, dynamic pricing |
+| `equipment` | `on` | Shop NPC, rods, baits, hats, repair kits |
+| `leaderboard` | `on` | Per-fish length leaderboards |
+| `tournaments` | `on` | Weekly target-species tournament with prize pool |
+| `active_tournaments` | `on` | Short daily tournaments at fixed times in mapped zones |
+| `challenges` | `on` | Rotating daily challenges with cash rewards |
+| `rental` | `on` | Boat rental at the fishing NPC |
+| `nets` | `on` | Placeable fish nets with durability and bait |
+| `treasure` | `on` | Sunken safes, treasure maps, pawnshop loot |
+
+## NPCs
+
+Two NPCs ship by default, both configurable:
+
+- **Fishing NPC** — sells rods, baits, shop equipment, rents boats. Default at Cassidy Creek.
+- **Pawnshop NPC** — buys fish (dynamic pricing) and treasure loot. Default in Mission Row.
+
+Coordinates and models live in `cfg.npc` — see the [configuration guide](/cc_fishing/configuration).
+
+## Dependencies
+
+- [`cc_lib`](/cc_lib/index) — TaskUI, Notification, Target, Inventory wrappers
+- [`ox_lib`](https://github.com/overextended/ox_lib) and [`oxmysql`](https://github.com/overextended/oxmysql)
+- [`ox_inventory`](https://github.com/overextended/ox_inventory) — the items block and the metadata display assume ox_inventory
+
+## Next steps
+
+- [Installation](/cc_fishing/installation) — drop the resource in, import SQL, paste items, ensure.
+- [Configuration](/cc_fishing/configuration) — tunables, NPC placement, modules, custom fish/zones/equipment.

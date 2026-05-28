@@ -1,0 +1,78 @@
+---
+title: "Installation"
+description: "Drop the resource in, import the SQL, paste the ox_inventory items, ensure after cc_lib."
+icon: 'rocket'
+---
+
+## Requirements
+
+- A FiveM server with a working `cc_lib` resource.
+- [ox_lib](https://github.com/overextended/ox_lib) and [oxmysql](https://github.com/overextended/oxmysql).
+- [ox_inventory](https://github.com/overextended/ox_inventory) — the shipped items block and metadata display target ox_inventory specifically.
+- A MySQL database reachable via oxmysql.
+- Streaming enabled — `cc_fishing` ships a custom fish-net asset under `stream/`.
+
+## Steps
+
+<Steps>
+  <Step title="Place the resource">
+    Copy `cc_fishing` into a resources directory the server loads. The repo ships under `resources/[cc]/cc_fishing/`.
+  </Step>
+  <Step title="Import the database tables">
+    Run `install.sql` (in the resource root) against your MySQL database. It creates four tables:
+
+    ```
+    cc_fishing_player         -- per-player level, xp, logbook, challenges
+    cc_fishing_leaderboard    -- per-fish, per-player best length
+    cc_fishing_tournaments    -- weekly tournament history
+    cc_fishing_nets           -- placed fish nets
+    ```
+
+    Import via your usual tool (HeidiSQL, DBeaver, `mysql` CLI) — for example:
+
+    ```bash
+    mysql -u <user> -p <database> < resources/[cc]/cc_fishing/install.sql
+    ```
+  </Step>
+  <Step title="Add the inventory items">
+    Open `resources/[cc]/cc_fishing/items.md` and copy the full Lua block inside that file. Paste it into `ox_inventory/data/items.lua`, anywhere inside the top-level `return { ... }`.
+
+    The block defines rods, baits, equipment, every fish tier, treasure-loot items, and safe-loot items. `lockpick` is skipped (it ships with ox_inventory). `weapon_pistol` / `weapon_marksmanpistol` are GTA weapon hashes — no item entry needed.
+
+    Drop the matching PNGs into `ox_inventory/web/images/`. The filenames in the block (e.g. `fishingrod.png`, `salmon.png`) match the image set shipped with the resource.
+
+    <Note>
+      `fishingrod*`, `treasure_map`, and `logbook` register their own item-use handlers server-side at boot. You don't need to wire anything in `items.lua` for those.
+    </Note>
+  </Step>
+  <Step title="Ensure after cc_lib">
+    Order matters in `server.cfg`:
+
+    ```
+    ensure oxmysql
+    ensure ox_lib
+    ensure ox_inventory
+    ensure cc_lib
+    ensure cc_fishing
+    ```
+
+    `cc_fishing`'s `fxmanifest.lua` declares `cc_lib`, `ox_lib`, and `oxmysql` as dependencies — FXServer will refuse to start it before they're up.
+  </Step>
+  <Step title="Restart ox_inventory">
+    Required so the new items register. Either restart the resource or restart the server.
+  </Step>
+  <Step title="Verify in-game">
+    1. Drive to Cassidy Creek (default fishing NPC location, `(1302.95, 4228.7, 33.91)`). A boat-rod blip should be on your map.
+    2. Buy an `EZ Cast 2000` and some `Earthworms` from the NPC.
+    3. Walk to the water's edge, equip the rod, and use the cast prompt.
+    4. After the bite, complete the minigame — the catch should land in your inventory with `length` and `caught_at` metadata visible on hover.
+    5. Drive to the pawnshop NPC in Mission Row (`(-1459.56, -413.97, 35.74)`) and sell the catch.
+
+    <Tip>
+      Set `cfg.debug = true` in `shared/config.lua` to bypass cooldowns and log verbosely while you test.
+    </Tip>
+  </Step>
+  <Step title="Configure">
+    Defaults are sensible, but most servers will want to move the NPCs, toggle modules, or rebalance prices. All tunables, NPC placement, module toggles, and customisable Lua files are covered in the [configuration guide](/cc_fishing/configuration).
+  </Step>
+</Steps>

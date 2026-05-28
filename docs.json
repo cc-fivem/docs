@@ -84,6 +84,14 @@
               "cc_pacificheist/index",
               "cc_pacificheist/installation"
             ]
+          },
+          {
+            "group": "Fishing",
+            "pages": [
+              "cc_fishing/index",
+              "cc_fishing/installation",
+              "cc_fishing/configuration"
+            ]
           }
         ]
       },
