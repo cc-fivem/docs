@@ -1,0 +1,313 @@
+---
+title: "Exports"
+description: "Server-side exports for reading and mutating heist profiles from your own resources."
+icon: 'shield'
+---
+
+`cc_heistcontracts` keeps every player's VICE balance, XP, level, alias, and
+training progress in a dedicated `heist_profiles` table, cached in memory
+while the player is online and flushed periodically (and on drop) to MySQL.
+
+These exports are the supported way for other resources — admin menus,
+reward systems, custom commands — to read or change that state. All exports
+are **server-side**.
+
+<Note>
+  Profiles are loaded lazily on first access. The first export call for a
+  given `src` blocks on a one-shot DB read; subsequent calls hit the cache.
+</Note>
+
+## Currency (VICE)
+
+VICE is the soft currency earned from completing heists and spent in the
+marketplace. The balance is always a non-negative integer; deltas are floored.
+
+### AddVice
+
+Credit VICE to the player and append a `credit` entry to their ledger.
+
+```lua
+local ok, newBalance = exports.cc_heistcontracts:AddVice(src, 500, 'pacific:vault_bonus')
+```
+
+<ParamField path="src" type="number" required>
+  Player server id.
+</ParamField>
+<ParamField path="amount" type="number" required>
+  Positive integer. Non-integer values are floored; values `≤ 0` are rejected.
+</ParamField>
+<ParamField path="note" type="string">
+  Free-form label written to the ledger. Use a stable identifier (e.g.
+  `'pacific:vault_bonus'`) so the ledger reads cleanly in the dashboard.
+</ParamField>
+
+**Returns:** `ok` (`boolean`), `newBalance` (`number`) on success. Returns
+`false` alone if the profile cannot be resolved or the amount is invalid.
+
+### RemoveVice
+
+Debit VICE from the player. Fails (without mutating) if the balance is too low.
+
+```lua
+local ok, balance = exports.cc_heistcontracts:RemoveVice(src, 250, 'shop:mask_skull')
+if not ok then
+    -- balance is still the current (unchanged) balance
+end
+```
+
+<ParamField path="src" type="number" required>
+  Player server id.
+</ParamField>
+<ParamField path="amount" type="number" required>
+  Positive integer to debit.
+</ParamField>
+<ParamField path="note" type="string">
+  Ledger label.
+</ParamField>
+
+**Returns:** `ok` (`boolean`), `balance` (`number`). On insufficient funds,
+returns `false, currentBalance`.
+
+### GetVice
+
+Read the current VICE balance.
+
+```lua
+local balance = exports.cc_heistcontracts:GetVice(src)
+```
+
+<ParamField path="src" type="number" required>
+  Player server id.
+</ParamField>
+
+**Returns:** `number`, or `nil` if no profile could be resolved.
+
+## XP and level
+
+Levels are derived from cumulative XP via the curve configured in
+`shared/config.lua`. `AddXp` rolls the player up as many levels as the new XP
+total covers — gaining a huge chunk of XP at once can level the player up
+multiple times in a single call.
+
+### AddXp
+
+Grant XP to an online player. Level-ups are applied automatically.
+
+```lua
+local ok, level, xp = exports.cc_heistcontracts:AddXp(src, 1200)
+```
+
+<ParamField path="src" type="number" required>
+  Player server id.
+</ParamField>
+<ParamField path="amount" type="number" required>
+  Positive integer. Floored; values `≤ 0` are rejected.
+</ParamField>
+
+**Returns:** `ok` (`boolean`), `level` (`number`), `xp` (`number`) on success.
+
+### GrantXpByAlias
+
+Grant XP to a player identified by their dashboard alias. Works whether the
+player is online (mutates the cached profile and lets the periodic flush
+persist it) or offline (updates the DB row directly).
+
+```lua
+local ok, info = exports.cc_heistcontracts:GrantXpByAlias('NightOwl', 500)
+if ok then
+    print(info.citizenid, info.levelBefore, info.levelAfter, info.xpAfter)
+end
+```
+
+<ParamField path="alias" type="string" required>
+  Case-insensitive alias lookup.
+</ParamField>
+<ParamField path="amount" type="number" required>
+  Positive integer.
+</ParamField>
+
+**Returns on success:** `true`, `info` table:
+
+<ResponseField name="info.src" type="number | nil">
+  Server id if the player is online, `nil` if offline.
+</ResponseField>
+<ResponseField name="info.citizenid" type="string">
+  Resolved citizenid for the alias.
+</ResponseField>
+<ResponseField name="info.levelBefore" type="number">
+  Level prior to the grant.
+</ResponseField>
+<ResponseField name="info.levelAfter" type="number">
+  Level after applying the grant.
+</ResponseField>
+<ResponseField name="info.xpAfter" type="number">
+  XP total after the grant.
+</ResponseField>
+
+**Returns on failure:** `false, errCode` where `errCode` is one of
+`'invalid_amount'`, `'not_found'`, `'db'`.
+
+### GetXp
+
+Current XP total (cumulative, not level-relative).
+
+```lua
+local xp = exports.cc_heistcontracts:GetXp(src)
+```
+
+<ParamField path="src" type="number" required>
+  Player server id.
+</ParamField>
+
+**Returns:** `number`, or `nil` if no profile could be resolved.
+
+### GetLevel
+
+Current level.
+
+```lua
+local level = exports.cc_heistcontracts:GetLevel(src)
+```
+
+<ParamField path="src" type="number" required>
+  Player server id.
+</ParamField>
+
+**Returns:** `number`, or `nil` if no profile could be resolved.
+
+### GetLevelProgress
+
+Convenience accessor that returns everything you need to draw a progress
+ring or "X / Y to next level" label in one call.
+
+```lua
+local p = exports.cc_heistcontracts:GetLevelProgress(src)
+-- p = { level = 7, xp = 4250, base = 3600, inLevel = 650, span = 1400 }
+-- percent through current level = p.inLevel / p.span
+```
+
+<ParamField path="src" type="number" required>
+  Player server id.
+</ParamField>
+
+**Returns:** a table, or `nil` if no profile could be resolved.
+
+<ResponseField name="level" type="number">
+  Current level.
+</ResponseField>
+<ResponseField name="xp" type="number">
+  Current cumulative XP.
+</ResponseField>
+<ResponseField name="base" type="number">
+  Cumulative XP at the start of the current level.
+</ResponseField>
+<ResponseField name="inLevel" type="number">
+  XP accumulated within the current level (`xp - base`, clamped).
+</ResponseField>
+<ResponseField name="span" type="number">
+  XP needed to fill the current level (`nextLevelReq - base`).
+</ResponseField>
+
+## Identity
+
+### GetAlias
+
+Read the player's dashboard alias. Returns `nil` if the player has not yet
+chosen one (the dashboard prompts for an alias on first open).
+
+```lua
+local alias = exports.cc_heistcontracts:GetAlias(src)
+```
+
+<ParamField path="src" type="number" required>
+  Player server id.
+</ParamField>
+
+**Returns:** `string | nil`.
+
+## Training
+
+The training side of the dashboard is gated by two flags: an overall unlock,
+and a per-minigame unlock that controls which games appear in the training
+list. Both are persisted.
+
+### IsTrainingUnlocked
+
+```lua
+if exports.cc_heistcontracts:IsTrainingUnlocked(src) then
+    -- player has access to the training panel
+end
+```
+
+<ParamField path="src" type="number" required>
+  Player server id.
+</ParamField>
+
+**Returns:** `boolean`.
+
+### HasTrainingMinigame
+
+```lua
+local owned = exports.cc_heistcontracts:HasTrainingMinigame(src, 'pattern')
+```
+
+<ParamField path="src" type="number" required>
+  Player server id.
+</ParamField>
+<ParamField path="id" type="string" required>
+  Minigame identifier (matches the `cc_minigames` export name, lowercased —
+  e.g. `'pattern'`, `'crack'`, `'lockpick'`).
+</ParamField>
+
+**Returns:** `boolean`.
+
+### UnlockTraining
+
+Idempotent: unlocks the overall training panel for the player.
+
+```lua
+exports.cc_heistcontracts:UnlockTraining(src)
+```
+
+<ParamField path="src" type="number" required>
+  Player server id.
+</ParamField>
+
+**Returns:** `boolean` — `true` on success (including when already unlocked).
+
+### UnlockTrainingMinigame
+
+Idempotent: unlocks a specific training minigame for the player.
+
+```lua
+exports.cc_heistcontracts:UnlockTrainingMinigame(src, 'crack')
+```
+
+<ParamField path="src" type="number" required>
+  Player server id.
+</ParamField>
+<ParamField path="id" type="string" required>
+  Minigame identifier (see [HasTrainingMinigame](#hastrainingminigame)).
+</ParamField>
+
+**Returns:** `boolean` — `true` on success (including when already unlocked).
+
+## Contract integration exports
+
+Separate from the per-profile API above, `cc_heistcontracts` also exposes
+the integration surface used by heist resources themselves:
+
+| Export | Purpose |
+| --- | --- |
+| `:RegisterContract(data, entry_point, opts?)` | Register a contract with the dashboard/marketplace. See [Registering Contracts](/cc_heistcontracts/registering-contracts). |
+| `:StartContract(nameOrId, runtimeData)` | Legacy direct-start helper for old scripts. |
+| `:ApplyCooldown(contractId, locationId)` | Stamp a per-location cooldown. |
+| `:FinishContract(src, success)` | Mark a heist done for one player. Awards VICE+XP on `success = true`. |
+| `:FinishHeist(groupName, success)` | Convenience: finish for every member of a `cc_lib.Groups` group. |
+
+<Note>
+  Use `FinishContract` / `FinishHeist` for normal heist completion — they
+  already credit VICE and XP from the contract's `reward` table. Reach for
+  `AddVice` / `AddXp` only when you need to grant extra rewards outside the
+  contract flow (e.g. one-off events, admin tools, side-objectives).
+</Note>
