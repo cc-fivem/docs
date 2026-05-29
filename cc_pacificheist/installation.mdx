@@ -124,7 +124,7 @@ icon: 'rocket'
 
     Raise `drainSeconds` for a more forgiving fight; drop `bumpAmount` to make maintain runs more critical.
   </Step>
-  <Step title="(Optional) Register the bank doors">
+  <Step title="Register the bank doors">
     <Tabs>
       <Tab title="ox_doorlock">
         Set `cfg.auto_insert_doors = true` in `shared/config.lua` and the resource will insert its doors into the `ox_doorlock` table on first start (skipping any names already present). Leave it `false` if you manage doors manually.
@@ -242,10 +242,6 @@ icon: 'rocket'
     </Tip>
   </Step>
 </Steps>
-
-## No SQL migrations
-
-`cc_pacificheist` has no schema. Completion state lives in `cc_heistcontracts.heist_profiles`. Make sure the three `cc_heistcontracts` migrations have already been applied.
 
 ## Customising loot
 
