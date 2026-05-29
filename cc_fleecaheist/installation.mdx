@@ -117,6 +117,9 @@ icon: 'rocket'
 
     `cc_fleecaheist`'s `fxmanifest.lua` already declares `cc_heistcontracts` as a dependency, so FXServer will refuse to start it before the parent is up. Wrong order = `No such export RegisterContract in resource cc_heistcontracts`.
   </Step>
+  <Step title="(Optional) Auto-insert ox_doorlock entries">
+    Set `cfg.auto_insert_doors = true` in `shared/config.lua` and the resource will insert its branch doors into the `ox_doorlock` table on first start (skipping any names already present). Leave it `false` if you manage doors manually.
+  </Step>
   <Step title="(Optional) Tune the police gate">
     By default the contract refuses to start unless `≥ 2` on-duty `police` jobs are online. Edit `shared/contract.lua`:
 

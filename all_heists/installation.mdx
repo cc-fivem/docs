@@ -1426,6 +1426,20 @@ end)
 
     Each module's `fxmanifest.lua` declares `cc_heistcontracts` as a dependency, so FXServer will refuse to start any of them before the parent is up. Wrong order = `No such export RegisterContract in resource cc_heistcontracts`.
   </Step>
+  <Step title="(Optional) Auto-insert ox_doorlock entries">
+    Each heist ships an `auto_insert_doors` flag in its `shared/config.lua`. Set it to `true` and the resource will insert its doors into the `ox_doorlock` table on first start (skipping any names already present):
+
+    ```lua
+    -- cc_fleecaheist/shared/config.lua
+    cfg.auto_insert_doors = true
+    -- cc_paletoheist/shared/config.lua
+    cfg.auto_insert_doors = true
+    -- cc_pacificheist/shared/config.lua
+    cfg.auto_insert_doors = true
+    ```
+
+    Leave any of them `false` if you manage that heist's doors manually.
+  </Step>
   <Step title="(Optional) Tune the police gate">
     Fleeca is the only heist with a stock police-count gate. Edit `cc_fleecaheist/shared/contract.lua`:
 

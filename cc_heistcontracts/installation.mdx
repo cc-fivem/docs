@@ -16,10 +16,11 @@ icon: 'rocket'
   <Step title="Place the resource">
     Copy the `cc_heistcontracts` folder into a resources directory the server already loads. The repo ships under `resources/[cc]/cc_heistcontracts/`.
   </Step>
-  <Step title="Run the SQL file">
-    Run the provided SQL file. 
+  <Step title="Install the database schema">
+    `config.autoInstallDatabase` in `shared/config.lua` is `true` by default — the resource auto-runs `sql/install.sql` on first start and creates the `heist_profiles` table if it doesn't exist. Leave it on for a hands-off install.
 
-    If on Linux:
+    If you'd rather apply the schema yourself, set `config.autoInstallDatabase = false` and run the file manually:
+
     ```bash
     mysql your_db < sql/install.sql
     ```
