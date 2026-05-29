@@ -107,9 +107,71 @@ icon: 'rocket'
 
     If you're on `ox_doorlock` (or similar), register doors with these ids so the heist can unlock them at the right step. Omit door registration and the heist will still run, but doors will stay locked.
 
-    <Tip>
-      Set `cfg.auto_insert_doors = true` in `shared/config.lua` and the resource will insert these doors into the `ox_doorlock` table on first start (skipping any names already present). Leave it `false` if you manage doors manually.
-    </Tip>
+    <Tabs>
+      <Tab title="ox_doorlock">
+        Set `cfg.auto_insert_doors = true` in `shared/config.lua` and the resource will insert these doors into the `ox_doorlock` table on first start (skipping any names already present). Leave it `false` if you manage doors manually.
+      </Tab>
+      <Tab title="qb-doorlock">
+        `cfg.auto_insert_doors` only targets `ox_doorlock`. On `qb-doorlock`, paste these entries into `qb-doorlock/config/locations.lua` (inside `Config.DoorList`) and restart `qb-doorlock`:
+
+        ```lua
+        Config.DoorList['PaletoThermiteDoor'] = {
+            objHash = 1309269072,
+            objCoords  = vec3(-106.47130584716, 6476.1577148438, 31.9547996521),
+            textCoords = vec3(-106.47130584716, 6476.1577148438, 31.9547996521),
+            objYaw = 315, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['paleto-security_backdoor'] = {
+            objHash = 1248599813,
+            objCoords  = vec3(-96.708656311036, 6474.056640625, 31.787979125976),
+            textCoords = vec3(-96.708656311036, 6474.056640625, 31.787979125976),
+            objYaw = 135, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['paleto-office1'] = {
+            objHash = 2110946875,
+            objCoords  = vec3(-104.83712768554, 6463.7739257812, 31.79334640503),
+            textCoords = vec3(-104.83712768554, 6463.7739257812, 31.79334640503),
+            objYaw = 225, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['paleto-office2'] = {
+            objHash = 1754616769,
+            objCoords  = vec3(-100.62174224854, 6467.9892578125, 31.79334640503),
+            textCoords = vec3(-100.62174224854, 6467.9892578125, 31.79334640503),
+            objYaw = 45, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['paleto-office3'] = {
+            objHash = -368548260,
+            objCoords  = vec3(-104.70573425292, 6473.91796875, 31.787982940674),
+            textCoords = vec3(-104.70573425292, 6473.91796875, 31.787982940674),
+            objYaw = 45, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['paleto-security_front'] = {
+            objHash = -147325430,
+            objCoords  = vec3(-100.1122970581, 6474.3920898438, 31.787979125976),
+            textCoords = vec3(-100.1122970581, 6474.3920898438, 31.787979125976),
+            objYaw = 315, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['paleto-hall'] = {
+            objHash = -56652918,
+            objCoords  = vec3(-111.0426940918, 6475.328125, 31.787979125976),
+            textCoords = vec3(-111.0426940918, 6475.328125, 31.787979125976),
+            objYaw = 225, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['paleto-control_room'] = {
+            objHash = -147325430,
+            objCoords  = vec3(-92.232231140136, 6468.9604492188, 31.787979125976),
+            textCoords = vec3(-92.232231140136, 6468.9604492188, 31.787979125976),
+            objYaw = 225, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['paleto-vault'] = {
+            objHash = -2050208642,
+            objCoords  = vec3(-100.24186706542, 6464.5493164062, 31.884603500366),
+            textCoords = vec3(-100.24186706542, 6464.5493164062, 31.884603500366),
+            objYaw = 225, locked = true, pickable = false, distance = 2
+        }
+        ```
+      </Tab>
+    </Tabs>
   </Step>
   <Step title="Verify in-game">
     1. Set a profile to **level 3** (the contract is gated) — use `/heist:grantxp <playerId> 500` if you've enabled the admin command.

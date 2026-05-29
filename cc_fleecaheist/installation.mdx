@@ -117,8 +117,120 @@ icon: 'rocket'
 
     `cc_fleecaheist`'s `fxmanifest.lua` already declares `cc_heistcontracts` as a dependency, so FXServer will refuse to start it before the parent is up. Wrong order = `No such export RegisterContract in resource cc_heistcontracts`.
   </Step>
-  <Step title="(Optional) Auto-insert ox_doorlock entries">
-    Set `cfg.auto_insert_doors = true` in `shared/config.lua` and the resource will insert its branch doors into the `ox_doorlock` table on first start (skipping any names already present). Leave it `false` if you manage doors manually.
+  <Step title="(Optional) Register the branch doors">
+    <Tabs>
+      <Tab title="ox_doorlock">
+        Set `cfg.auto_insert_doors = true` in `shared/config.lua` and the resource will insert its branch doors into the `ox_doorlock` table on first start (skipping any names already present). Leave it `false` if you manage doors manually.
+      </Tab>
+      <Tab title="qb-doorlock">
+        `cfg.auto_insert_doors` only targets `ox_doorlock`. On `qb-doorlock`, paste these entries into `qb-doorlock/config/locations.lua` (inside `Config.DoorList`) and restart `qb-doorlock`:
+
+        ```lua
+        Config.DoorList['legion-gate'] = {
+            objHash = -1591004109,
+            objCoords  = vec3(150.31129455566, -1047.574584961, 29.678188323974),
+            textCoords = vec3(150.31129455566, -1047.574584961, 29.678188323974),
+            objYaw = 160, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['legion-backdoor'] = {
+            objHash = -147325430,
+            objCoords  = vec3(144.35862731934, -1043.1907958984, 29.529350280762),
+            textCoords = vec3(144.35862731934, -1043.1907958984, 29.529350280762),
+            objYaw = 250, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['legion-reception'] = {
+            objHash = -147325430,
+            objCoords  = vec3(145.36862182618, -1041.9357910156, 29.525213241578),
+            textCoords = vec3(145.36862182618, -1041.9357910156, 29.525213241578),
+            objYaw = 70, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['hawick-gate'] = {
+            objHash = -1591004109,
+            objCoords  = vec3(-350.3953552246, -56.742294311524, 49.346691131592),
+            textCoords = vec3(-350.3953552246, -56.742294311524, 49.346691131592),
+            objYaw = 161, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['hawick-backdoor'] = {
+            objHash = -147325430,
+            objCoords  = vec3(-356.4246520996, -52.464557647706, 49.197853088378),
+            textCoords = vec3(-356.4246520996, -52.464557647706, 49.197853088378),
+            objYaw = 251, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['hawick-reception'] = {
+            objHash = -147325430,
+            objCoords  = vec3(-355.43701171875, -51.191829681396, 49.193714141846),
+            textCoords = vec3(-355.43701171875, -51.191829681396, 49.193714141846),
+            objYaw = 71, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['harmony-gate'] = {
+            objHash = -1591004109,
+            objCoords  = vec3(1172.2911376954, 2713.0883789062, 38.398147583008),
+            textCoords = vec3(1172.2911376954, 2713.0883789062, 38.398147583008),
+            objYaw = 0, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['harmony-backdoor'] = {
+            objHash = -147325430,
+            objCoords  = vec3(1179.3896484375, 2711.0239257812, 38.249309539794),
+            textCoords = vec3(1179.3896484375, 2711.0239257812, 38.249309539794),
+            objYaw = 90, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['harmony-reception'] = {
+            objHash = -147325430,
+            objCoords  = vec3(1178.8739013672, 2709.4978027344, 38.245170593262),
+            textCoords = vec3(1178.8739013672, 2709.4978027344, 38.245170593262),
+            objYaw = 270, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['dperro-reception'] = {
+            objHash = -147325430,
+            objCoords  = vec3(-1214.8493652344, -334.84872436524, 37.938171386718),
+            textCoords = vec3(-1214.8493652344, -334.84872436524, 37.938171386718),
+            objYaw = 117, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['dperro-backdoor'] = {
+            objHash = -147325430,
+            objCoords  = vec3(-1214.6197509766, -336.44323730468, 37.942310333252),
+            textCoords = vec3(-1214.6197509766, -336.44323730468, 37.942310333252),
+            objYaw = 297, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['dperro-gate'] = {
+            objHash = -1591004109,
+            objCoords  = vec3(-1207.3544921875, -335.07723999024, 38.091148376464),
+            textCoords = vec3(-1207.3544921875, -335.07723999024, 38.091148376464),
+            objYaw = 207, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['ocean-gate'] = {
+            objHash = -1591004109,
+            objCoords  = vec3(-2956.1740722656, 485.42306518554, 16.007200241088),
+            textCoords = vec3(-2956.1740722656, 485.42306518554, 16.007200241088),
+            objYaw = 268, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['ocean-backdoor'] = {
+            objHash = -147325430,
+            objCoords  = vec3(-2958.541015625, 478.41958618164, 15.85836315155),
+            textCoords = vec3(-2958.541015625, 478.41958618164, 15.85836315155),
+            objYaw = 358, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['ocean-reception'] = {
+            objHash = -147325430,
+            objCoords  = vec3(-2960.0437011718, 479.0002746582, 15.854226112366),
+            textCoords = vec3(-2960.0437011718, 479.0002746582, 15.854226112366),
+            objYaw = 178, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pinkcage-gate'] = {
+            objHash = -1591004109,
+            objCoords  = vec3(314.64379882812, -285.94006347656, 54.47490310669),
+            textCoords = vec3(314.64379882812, -285.94006347656, 54.47490310669),
+            objYaw = 160, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pinkage-reception'] = {
+            objHash = -147325430,
+            objCoords  = vec3(309.69915771484, -280.30297851562, 54.321926116943),
+            textCoords = vec3(309.69915771484, -280.30297851562, 54.321926116943),
+            objYaw = 70, locked = true, pickable = false, distance = 2
+        }
+        ```
+      </Tab>
+    </Tabs>
   </Step>
   <Step title="(Optional) Tune the police gate">
     By default the contract refuses to start unless `≥ 2` on-duty `police` jobs are online. Edit `shared/contract.lua`:

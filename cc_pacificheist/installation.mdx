@@ -124,8 +124,110 @@ icon: 'rocket'
 
     Raise `drainSeconds` for a more forgiving fight; drop `bumpAmount` to make maintain runs more critical.
   </Step>
-  <Step title="(Optional) Auto-insert ox_doorlock entries">
-    Set `cfg.auto_insert_doors = true` in `shared/config.lua` and the resource will insert its doors into the `ox_doorlock` table on first start (skipping any names already present). Leave it `false` if you manage doors manually.
+  <Step title="(Optional) Register the bank doors">
+    <Tabs>
+      <Tab title="ox_doorlock">
+        Set `cfg.auto_insert_doors = true` in `shared/config.lua` and the resource will insert its doors into the `ox_doorlock` table on first start (skipping any names already present). Leave it `false` if you manage doors manually.
+      </Tab>
+      <Tab title="qb-doorlock">
+        `cfg.auto_insert_doors` only targets `ox_doorlock`. On `qb-doorlock`, paste these entries into `qb-doorlock/config/locations.lua` (inside `Config.DoorList`) and restart `qb-doorlock`. The manager's office is a `double` door:
+
+        ```lua
+        Config.DoorList['pacific-managers_office'] = {
+            doors = {
+                { objHash = 1109357065, objYaw = 70,  objCoords = vec3(273.18389892578, 216.86282348632, 110.28051757812) },
+                { objHash = 1109357065, objYaw = 250, objCoords = vec3(272.4721069336, 214.90727233886, 110.28051757812) },
+            },
+            textCoords = vec3(272.82800292968, 215.8850402832, 110.28051757812),
+            locked = true, pickable = false, distance = 2, doorType = 'double'
+        }
+        Config.DoorList['pacific-cellar_right'] = {
+            objHash = 409280169,
+            objCoords  = vec3(272.6421508789, 219.8987121582, 97.317977905274),
+            textCoords = vec3(272.6421508789, 219.8987121582, 97.317977905274),
+            objYaw = 340, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pacific-cellar_left'] = {
+            objHash = 409280169,
+            objCoords  = vec3(270.10321044922, 212.92292785644, 97.317977905274),
+            textCoords = vec3(270.10321044922, 212.92292785644, 97.317977905274),
+            objYaw = 340, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pacific-cellar_left_hall'] = {
+            objHash = 409280169,
+            objCoords  = vec3(251.6498413086, 216.19061279296, 97.317977905274),
+            textCoords = vec3(251.6498413086, 216.19061279296, 97.317977905274),
+            objYaw = 250, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pacific-cellar_right_hall'] = {
+            objHash = 409280169,
+            objCoords  = vec3(256.41244506836, 229.2759399414, 97.317977905274),
+            textCoords = vec3(256.41244506836, 229.2759399414, 97.317977905274),
+            objYaw = 70, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pacific-cellar_left_loot'] = {
+            objHash = 409280169,
+            objCoords  = vec3(244.55801391602, 216.89727783204, 97.317977905274),
+            textCoords = vec3(244.55801391602, 216.89727783204, 97.317977905274),
+            objYaw = 340, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pacific-cellar_right_loot'] = {
+            objHash = 409280169,
+            objCoords  = vec3(250.56420898438, 233.39938354492, 97.317977905274),
+            textCoords = vec3(250.56420898438, 233.39938354492, 97.317977905274),
+            objYaw = 340, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pacific-vault_inside_left'] = {
+            objHash = 643152522,
+            objCoords  = vec3(229.89053344726, 227.34201049804, 97.323974609375),
+            textCoords = vec3(229.89053344726, 227.34201049804, 97.323974609375),
+            objYaw = 340, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pacific-vault_inside_right'] = {
+            objHash = 643152522,
+            objCoords  = vec3(225.64628601074, 228.88677978516, 97.323974609375),
+            textCoords = vec3(225.64628601074, 228.88677978516, 97.323974609375),
+            objYaw = 160, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pacific-reception4'] = {
+            objHash = -2121568016,
+            objCoords  = vec3(251.51986694336, 215.71315002442, 106.3702468872),
+            textCoords = vec3(251.51986694336, 215.71315002442, 106.3702468872),
+            objYaw = 250, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pacific-reception1'] = {
+            objHash = -2121568016,
+            objCoords  = vec3(256.60681152344, 229.68962097168, 106.3702468872),
+            textCoords = vec3(256.60681152344, 229.68962097168, 106.3702468872),
+            objYaw = 70, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pacific-reception2'] = {
+            objHash = -2121568016,
+            objCoords  = vec3(270.23065185546, 221.2673034668, 106.3702468872),
+            textCoords = vec3(270.23065185546, 221.2673034668, 106.3702468872),
+            objYaw = 70, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pacific-reception3'] = {
+            objHash = -2121568016,
+            objCoords  = vec3(267.3699645996, 213.40798950196, 106.3702468872),
+            textCoords = vec3(267.3699645996, 213.40798950196, 106.3702468872),
+            objYaw = 250, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pacific-staircase_back'] = {
+            objHash = 267980221,
+            objCoords  = vec3(277.59533691406, 223.5415802002, 106.3804321289),
+            textCoords = vec3(277.59533691406, 223.5415802002, 106.3804321289),
+            objYaw = 160, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['pacific-entrance_back'] = {
+            objHash = 267980221,
+            objCoords  = vec3(272.7904663086, 206.48045349122, 106.38217163086),
+            textCoords = vec3(272.7904663086, 206.48045349122, 106.38217163086),
+            objYaw = 340, locked = true, pickable = false, distance = 2
+        }
+        ```
+      </Tab>
+    </Tabs>
   </Step>
   <Step title="(Optional) Disable the bank manager">
     By default a manager ped (`IG_Avery`) spawns at his PC armed with a pistol and shoots the crew. Set `cfg.enable_manager = false` in `shared/config.lua` to skip him.
