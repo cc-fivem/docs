@@ -46,85 +46,85 @@ The treasure safe uses the built-in ox_lib skill check by default. [`cc_minigame
 
         ```lua
         -- Rods
-        ['fishingrod']  = { label = 'EZ Cast 2000',         weight = 1500, stack = false, close = true, client = { image = 'fishingrod.png' } },
-        ['fishingrod2'] = { label = 'Coastal Caster Plus',  weight = 1700, stack = false, close = true, client = { image = 'fishingrod2.png' } },
-        ['fishingrod3'] = { label = 'Predator Pro Rod',     weight = 2000, stack = false, close = true, client = { image = 'fishingrod3.png' } },
+        fishingrod  = { label = 'EZ Cast 2000',        weight = 1500, stack = false, close = true },
+        fishingrod2 = { label = 'Coastal Caster Plus', weight = 1700, stack = false, close = true },
+        fishingrod3 = { label = 'Predator Pro Rod',    weight = 2000, stack = false, close = true },
 
         -- Baits
-        ['earthworms']    = { label = 'Earthworms',           weight = 50, client = { image = 'earthworms.png' } },
-        ['crickets']      = { label = 'Crickets',             weight = 50, client = { image = 'crickets.png' } },
-        ['leeches']       = { label = 'Leeches',              weight = 50, client = { image = 'leeches.png' } },
-        ['glowworms']     = { label = 'Glowworms',            weight = 50, client = { image = 'glowworms.png' } },
-        ['treasure_bait'] = { label = 'Treasure Hunter Bait', weight = 50, client = { image = 'treasure_bait.png' } },
+        earthworms    = { label = 'Earthworms',           weight = 50 },
+        crickets      = { label = 'Crickets',             weight = 50 },
+        leeches       = { label = 'Leeches',              weight = 50 },
+        glowworms     = { label = 'Glowworms',            weight = 50 },
+        treasure_bait = { label = 'Treasure Hunter Bait', weight = 50 },
 
         -- Equipment
-        ['logbook']        = { label = 'Fishing Logbook',  weight = 250,  stack = false, close = true, client = { image = 'logbook.png' } },
-        ['anchor']         = { label = 'Anchor',           weight = 4000,                              client = { image = 'anchor.png' } },
-        ['bait_shovel']    = { label = 'Bait Shovel',      weight = 1500, stack = false,               client = { image = 'bait_shovel.png' } },
-        ['fishinghat']     = { label = 'Lucky Fishing Hat',weight = 200,  stack = false, close = true, client = { image = 'fishinghat.png' } },
-        ['fishingnet']     = { label = 'Fishing Net',      weight = 2500,                              client = { image = 'fishingnet.png' } },
-        ['net_repair_kit'] = { label = 'Net Repair Kit',   weight = 800,                               client = { image = 'net_repair_kit.png' } },
-        ['illegal_hook']   = { label = 'Illegal Hook',     weight = 50,                                client = { image = 'illegal_hook.png' } },
+        logbook        = { label = 'Fishing Logbook',   weight = 250,  stack = false, close = true },
+        anchor         = { label = 'Anchor',            weight = 4000 },
+        bait_shovel    = { label = 'Bait Shovel',       weight = 1500, stack = false },
+        fishinghat     = { label = 'Lucky Fishing Hat', weight = 200,  stack = false, close = true },
+        fishingnet     = { label = 'Fishing Net',       weight = 2500 },
+        net_repair_kit = { label = 'Net Repair Kit',    weight = 800 },
+        illegal_hook   = { label = 'Illegal Hook',      weight = 50 },
 
         -- Fish (common)
-        ['salmon']  = { label = 'Salmon',  weight = 800, client = { image = 'salmon.png' } },
-        ['trout']   = { label = 'Trout',   weight = 600, client = { image = 'trout.png' } },
-        ['bass']    = { label = 'Bass',    weight = 700, client = { image = 'bass.png' } },
-        ['catfish'] = { label = 'Catfish', weight = 900, client = { image = 'catfish.png' } },
-        ['perch']   = { label = 'Perch',   weight = 300, client = { image = 'perch.png' } },
-        ['pike']    = { label = 'Pike',    weight = 700, client = { image = 'pike.png' } },
-        ['carp']    = { label = 'Carp',    weight = 700, client = { image = 'carp.png' } },
+        salmon  = { label = 'Salmon',  weight = 800 },
+        trout   = { label = 'Trout',   weight = 600 },
+        bass    = { label = 'Bass',    weight = 700 },
+        catfish = { label = 'Catfish', weight = 900 },
+        perch   = { label = 'Perch',   weight = 300 },
+        pike    = { label = 'Pike',    weight = 700 },
+        carp    = { label = 'Carp',    weight = 700 },
 
         -- Fish (uncommon)
-        ['bluegill'] = { label = 'Bluegill', weight = 400,  client = { image = 'bluegill.png' } },
-        ['cod']      = { label = 'Cod',      weight = 1100, client = { image = 'cod.png' } },
-        ['herring']  = { label = 'Herring',  weight = 300,  client = { image = 'herring.png' } },
-        ['walleye']  = { label = 'Walleye',  weight = 800,  client = { image = 'walleye.png' } },
-        ['bream']    = { label = 'Bream',    weight = 500,  client = { image = 'bream.png' } },
-        ['zander']   = { label = 'Zander',   weight = 700,  client = { image = 'zander.png' } },
+        bluegill = { label = 'Bluegill', weight = 400 },
+        cod      = { label = 'Cod',      weight = 1100 },
+        herring  = { label = 'Herring',  weight = 300 },
+        walleye  = { label = 'Walleye',  weight = 800 },
+        bream    = { label = 'Bream',    weight = 500 },
+        zander   = { label = 'Zander',   weight = 700 },
 
         -- Fish (rare)
-        ['sturgeon']     = { label = 'Sturgeon',      weight = 4000, client = { image = 'sturgeon.png' } },
-        ['swordfish']    = { label = 'Swordfish',     weight = 3000, client = { image = 'swordfish.png' } },
-        ['tuna']         = { label = 'Tuna',          weight = 2500, client = { image = 'tuna.png' } },
-        ['muskellunge']  = { label = 'Muskellunge',   weight = 1200, client = { image = 'muskellunge.png' } },
-        ['tarpon']       = { label = 'Tarpon',        weight = 3500, client = { image = 'tarpon.png' } },
-        ['giantcatfish'] = { label = 'Giant Catfish', weight = 4500, client = { image = 'giantcatfish.png' } },
+        sturgeon     = { label = 'Sturgeon',     weight = 4000 },
+        swordfish    = { label = 'Swordfish',    weight = 3000 },
+        tuna         = { label = 'Tuna',         weight = 2500 },
+        muskellunge  = { label = 'Muskellunge',  weight = 1200 },
+        tarpon       = { label = 'Tarpon',       weight = 3500 },
+        giantcatfish = { label = 'Giant Catfish', weight = 4500 },
 
         -- Fish (very rare)
-        ['whale']            = { label = 'Whale',             weight = 50000, stack = false, client = { image = 'whale.png' } },
-        ['shark']            = { label = 'Shark',             weight = 8000,                 client = { image = 'shark.png' } },
-        ['eel']              = { label = 'Eel',               weight = 800,                  client = { image = 'eel.png' } },
-        ['arapaima']         = { label = 'Arapaima',          weight = 6000,                 client = { image = 'arapaima.png' } },
-        ['giantsnakehead']   = { label = 'Giant Snakehead',   weight = 1500,                 client = { image = 'giantsnakehead.png' } },
-        ['goliathtigerfish'] = { label = 'Goliath Tigerfish', weight = 3000,                 client = { image = 'goliathtigerfish.png' } },
+        whale            = { label = 'Whale',             weight = 50000, stack = false },
+        shark            = { label = 'Shark',             weight = 8000 },
+        eel              = { label = 'Eel',               weight = 800 },
+        arapaima         = { label = 'Arapaima',          weight = 6000 },
+        giantsnakehead   = { label = 'Giant Snakehead',   weight = 1500 },
+        goliathtigerfish = { label = 'Goliath Tigerfish', weight = 3000 },
 
         -- Fish (legendary)
-        ['devilray']        = { label = 'Devil Ray',        weight = 9000,  stack = false, client = { image = 'devilray.png' } },
-        ['kraken']          = { label = 'Kraken',           weight = 80000, stack = false, client = { image = 'kraken.png' } },
-        ['megalodon']       = { label = 'Megalodon',        weight = 60000, stack = false, client = { image = 'megalodon.png' } },
-        ['giantcoelacanth'] = { label = 'Giant Coelacanth', weight = 7000,  stack = false, client = { image = 'giantcoelacanth.png' } },
-        ['goldenfish']      = { label = 'Golden Fish',      weight = 500,   stack = false, client = { image = 'goldenfish.png' } },
+        devilray        = { label = 'Devil Ray',        weight = 9000,  stack = false },
+        kraken          = { label = 'Kraken',           weight = 80000, stack = false },
+        megalodon       = { label = 'Megalodon',        weight = 60000, stack = false },
+        giantcoelacanth = { label = 'Giant Coelacanth', weight = 7000,  stack = false },
+        goldenfish      = { label = 'Golden Fish',      weight = 500,   stack = false },
 
         -- Treasure loot (pawnshop sellable)
-        ['gold_coin']        = { label = 'Gold Coin',          weight = 30,  client = { image = 'gold_coin.png' } },
-        ['vintage_watch']    = { label = 'Vintage Watch',      weight = 100, client = { image = 'vintage_watch.png' } },
-        ['antique_locket']   = { label = 'Antique Locket',     weight = 80,  client = { image = 'antique_locket.png' } },
-        ['captain_spyglass'] = { label = "Captain's Spyglass", weight = 600, client = { image = 'captain_spyglass.png' } },
-        ['captain_compass']  = { label = "Captain's Compass",  weight = 250, client = { image = 'captain_compass.png' } },
-        ['treasure_map']     = { label = 'Treasure Map',       weight = 50, stack = false, client = { image = 'treasure_map.png' } },
-        ['pharaohs_scarab']  = { label = "Pharaoh's Scarab",   weight = 200, client = { image = 'pharaohs_scarab.png' } },
-        ['emperors_jade']    = { label = "Emperor's Jade",     weight = 300, client = { image = 'emperors_jade.png' } },
-        ['megalodon_tooth']  = { label = 'Megalodon Tooth',    weight = 700, client = { image = 'megalodon_tooth.png' } },
-        ['atlantean_coin']   = { label = 'Atlantean Coin',     weight = 50,  client = { image = 'atlantean_coin.png' } },
+        gold_coin        = { label = 'Gold Coin',          weight = 30 },
+        vintage_watch    = { label = 'Vintage Watch',      weight = 100 },
+        antique_locket   = { label = 'Antique Locket',     weight = 80 },
+        captain_spyglass = { label = "Captain's Spyglass", weight = 600 },
+        captain_compass  = { label = "Captain's Compass",  weight = 250 },
+        treasure_map     = { label = 'Treasure Map',       weight = 50, stack = false },
+        pharaohs_scarab  = { label = "Pharaoh's Scarab",   weight = 200 },
+        emperors_jade    = { label = "Emperor's Jade",     weight = 300 },
+        megalodon_tooth  = { label = 'Megalodon Tooth',    weight = 700 },
+        atlantean_coin   = { label = 'Atlantean Coin',     weight = 50 },
 
         -- Safe loot (skip any that already exist in your items.lua)
-        ['goldchain'] = { label = 'Gold Chain', weight = 80,   client = { image = 'goldchain.png' } },
-        ['goldbar']   = { label = 'Gold Bar',   weight = 1500, client = { image = 'goldbar.png' } },
-        ['diamond']   = { label = 'Diamond',    weight = 50,   client = { image = 'diamond.png' } },
+        goldchain = { label = 'Gold Chain', weight = 80 },
+        goldbar   = { label = 'Gold Bar',   weight = 1500 },
+        diamond   = { label = 'Diamond',    weight = 50 },
         ```
 
-        Drop the matching PNGs into `ox_inventory/web/images/`.
+        Drop the matching item images into `ox_inventory/web/images/` (filenames must match the name of the item).
 
         <Note>
           `fishingrod*`, `treasure_map`, and `logbook` register their own item-use handlers server-side at boot. You don't need to wire anything in `items.lua` for those.
