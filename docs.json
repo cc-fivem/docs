@@ -48,6 +48,14 @@
             ]
           },
           {
+            "group": "Fishing",
+            "pages": [
+              "cc_fishing/index",
+              "cc_fishing/installation",
+              "cc_fishing/configuration"
+            ]
+          },
+          {
             "group": "Heist Contracts",
             "pages": [
               "cc_heistcontracts/index",
@@ -83,14 +91,6 @@
             "pages": [
               "cc_pacificheist/index",
               "cc_pacificheist/installation"
-            ]
-          },
-          {
-            "group": "Fishing",
-            "pages": [
-              "cc_fishing/index",
-              "cc_fishing/installation",
-              "cc_fishing/configuration"
             ]
           }
         ]
