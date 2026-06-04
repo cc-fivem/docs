@@ -1,6 +1,6 @@
 ---
 title: "Configuration"
-description: "NPC placement, payment sources, key tunables, admin commands, and the Lua files you can edit freely."
+description: "NPC placement, payment sources, key tunables, and the Lua files you can edit freely."
 icon: 'sliders'
 ---
 
@@ -112,20 +112,3 @@ end,
 ```
 
 Or use any other `cc_minigames` export — see the [minigames reference](/cc_minigames/minigames).
-
-## Admin commands
-
-Daily tournaments run on a schedule, but you can drive them manually. All four require the `cc_fishing.admin` ACE (or the `command` ACE).
-
-| Command | What it does |
-| --- | --- |
-| `/at_start [type] [zone_idx]` | Start a daily tournament now. Type defaults to the first configured type, zone to `1` |
-| `/at_end` | End the running daily tournament and pay out |
-| `/at_skip` | Drop the next scheduled slot |
-| `/at_schedule` | Print the upcoming schedule to the server console |
-
-Grant the ACE in `server.cfg`:
-
-```
-add_ace group.admin cc_fishing.admin allow
-```

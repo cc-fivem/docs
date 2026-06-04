@@ -14,11 +14,10 @@ below).
 
 - `index.mdx` — what it is, feature overview, NPCs, dependencies.
 - `installation.mdx` — place, items (ox + qb tabs), ensure order, verify.
-- `configuration.mdx` — NPC placement, payment sources, tunables, editable files, admin commands.
+- `configuration.mdx` — NPC placement, payment sources, tunables, editable files.
 
 Three pages is the whole set. There are no customer-facing exports, so no
-`exports.mdx`. Admin commands are a short section on `configuration.mdx`, not
-their own page.
+`exports.mdx`.
 
 ## Facts the docs rely on
 
@@ -51,8 +50,6 @@ their own page.
   `random_break` field.
 - **Offline tournament prizes:** weekly winners are paid on next login (stored on
   the tournament's entries); daily winners forfeit if offline (live in-zone event).
-- **Admin commands** (`/at_start`, `/at_end`, `/at_skip`, `/at_schedule`) require
-  the `cc_fishing.admin` or `command` ACE. `/at_start` args are `[type] [zone_idx]`.
 - **`shared/*.lua` and `locales/*.json` are escrow-ignored** — customers can edit
   fish, zones, equipment, challenges, treasures, and locale freely.
 
