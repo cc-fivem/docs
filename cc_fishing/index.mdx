@@ -4,41 +4,47 @@ description: "Standalone fishing resource with rods, baits, nets, treasure hunts
 icon: 'fish'
 ---
 
-`cc_fishing` is a self-contained fishing resource. Players buy gear from an NPC, cast in defined zones, catch tier-weighted fish, sell at a dynamic-pricing pawnshop, and progress through 30 levels. Optional modules layer on nets, ocean-floor treasure hunts, daily challenges, a weekly tournament, and short-form active tournaments.
+`cc_fishing` is a self-contained fishing resource. Players buy gear from an NPC, charge a power-meter cast in defined water zones, land tier-weighted fish through a reaction minigame, and sell them at a dynamic-pricing pawnshop while progressing through 30 levels. On top of the core loop it layers nets, ocean-floor treasure hunts, daily challenges, a weekly tournament, and short daily tournaments.
 
-## Modules
+## At a glance
 
-Each module is a toggle in `shared/config.lua` under `cfg.modules`. Turn off what you don't want.
+<Columns cols={2}>
+  <Card title="Skill-based casting" icon="crosshair">
+    Hold to charge a power bar, release in the sweet spot for a faster bite and a luckier roll, then a reaction minigame to land the fish.
+  </Card>
+  <Card title="30 fish across 6 tiers" icon="fish">
+    Common to legendary, each with a length range that drives price, XP, and leaderboard rank. Fully editable in `shared/fish.lua`.
+  </Card>
+  <Card title="Dynamic market" icon="chart-line">
+    Pawnshop prices drop as a species is sold and recover over time, so no single fish stays the meta.
+  </Card>
+  <Card title="Nets & treasure" icon="anchor">
+    Placeable baited nets that catch over time, plus sunken safes found by treasure map and cracked with a minigame.
+  </Card>
+</Columns>
 
-| Module | Default | What it adds |
-| --- | --- | --- |
-| `level` | `on` | XP, level thresholds, level-gated equipment |
-| `sales` | `on` | Pawnshop NPC, dynamic pricing |
-| `equipment` | `on` | Shop NPC, rods, baits, hats, repair kits |
-| `leaderboard` | `on` | Per-fish length leaderboards |
-| `tournaments` | `on` | Weekly target-species tournament with prize pool |
-| `active_tournaments` | `on` | Short daily tournaments at fixed times in mapped zones |
-| `challenges` | `on` | Rotating daily challenges with cash rewards |
-| `rental` | `on` | Boat rental at the fishing NPC |
-| `nets` | `on` | Placeable fish nets with durability and bait |
-| `treasure` | `on` | Sunken safes, treasure maps, pawnshop loot |
+## Features
+
+- **Levelling** — XP per catch across 30 configurable tiers, with level-gated equipment.
+- **Tournaments** — a rolling weekly target-species tournament with a prize pool, plus short daily tournaments that mark a live zone on the map at fixed times.
+- **Daily challenges** — a rotating pool of objectives with cash rewards.
+- **Boat rental** — rent a boat at the fishing NPC, return it for a partial refund.
+- **Logbook** — a per-player record of every species caught, by length.
 
 ## NPCs
 
-Two NPCs ship by default, both configurable:
+Two NPCs ship by default, both fully configurable in `cfg.npc`:
 
-- **Fishing NPC** — sells rods, baits, shop equipment, rents boats. Default at Cassidy Creek.
+- **Fishing NPC** — sells rods, baits, equipment, and rents boats. Default at Cassidy Creek.
 - **Pawnshop NPC** — buys fish (dynamic pricing) and treasure loot. Default in Mission Row.
-
-Coordinates and models live in `cfg.npc` — see the [configuration guide](/cc_fishing/configuration).
 
 ## Dependencies
 
-- [`cc_lib`](/cc_lib/index) — TaskUI, Notification, Target, Inventory wrappers
+- [`cc_lib`](/cc_lib/index) — framework, inventory, notification, and target wrappers (qbx / qb / esx, ox_inventory / qb-inventory)
 - [`ox_lib`](https://github.com/overextended/ox_lib) and [`oxmysql`](https://github.com/overextended/oxmysql)
-- [`ox_inventory`](https://github.com/overextended/ox_inventory) — the items block and the metadata display assume ox_inventory
+- [`cc_minigames`](/cc_minigames/index) — optional, only if you switch the treasure safe to it (default is the built-in ox_lib skill check)
 
 ## Next steps
 
-- [Installation](/cc_fishing/installation) — drop the resource in, import SQL, paste items, ensure.
-- [Configuration](/cc_fishing/configuration) — tunables, NPC placement, modules, custom fish/zones/equipment.
+- [Installation](/cc_fishing/installation) — place the resource, add the items, ensure after `cc_lib`.
+- [Configuration](/cc_fishing/configuration) — NPC placement, payment sources, tunables, and the Lua files you can edit.

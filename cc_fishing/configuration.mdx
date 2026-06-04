@@ -1,35 +1,14 @@
 ---
 title: "Configuration"
-description: "Module toggles, NPC placement, payment sources, key tunables, and the Lua files you can edit freely."
+description: "NPC placement, payment sources, key tunables, admin commands, and the Lua files you can edit freely."
 icon: 'sliders'
 ---
 
-Everything `cc_fishing` exposes for tuning. All paths are relative to the resource root.
-
-## Modules
-
-`shared/config.lua` → `cfg.modules`. Toggle features on or off. Restart `cc_fishing` after editing.
-
-```lua
-cfg.modules = {
-    level              = true,
-    sales              = true,
-    equipment          = true,
-    leaderboard        = true,
-    tournaments        = true,
-    active_tournaments = true,
-    challenges         = true,
-    rental             = true,
-    nets               = true,
-    treasure           = true,
-}
-```
-
-NPC interactions, UI tabs, and server logic for each module gate off the same flag — no extra cleanup needed when turning one off.
+Everything `cc_fishing` exposes for tuning lives in `shared/config.lua` unless noted. Paths are relative to the resource root. Restart `cc_fishing` after editing.
 
 ## NPC placement
 
-`shared/config.lua` → `cfg.npc`. Change the model or coords and restart the resource; blips, peds, and target zones rebuild from this block.
+`cfg.npc`. Change the model or coords and restart; blips, peds, and target zones rebuild from this block.
 
 ```lua
 cfg.npc = {
@@ -52,7 +31,7 @@ cfg.npc = {
 
 ## Payment sources
 
-`shared/config.lua` → `cfg.money`. Each entry is `'cash'` or `'bank'`.
+`cfg.money`. Each entry is `'cash'` or `'bank'`.
 
 ```lua
 cfg.money = {
@@ -67,8 +46,6 @@ cfg.money = {
 
 ## Key tunables
 
-All in `shared/config.lua`. Edit and restart.
-
 | Field | Default | What it does |
 | --- | --- | --- |
 | `cfg.cast.wait_min_seconds` / `wait_max_seconds` | `25` / `40` | Bite-wait window before any level reduction |
@@ -76,19 +53,23 @@ All in `shared/config.lua`. Edit and restart.
 | `cfg.length_skew` | `2.5` | Catch-length distribution. Higher = trophies are rarer |
 | `cfg.level_thresholds` | 30 tiers | XP totals per level. Edit to reshape progression |
 | `cfg.market.floor` / `ceiling` | `0.75` / `1.25` | Pawnshop multiplier bounds |
-| `cfg.market.impact` / `recovery` | `0.10` / `0.05` | Per-sale push toward floor; per-tick recovery |
+| `cfg.market.impact` / `recovery` | `0.10` / `0.05` | Per-sale push toward the floor; per-tick recovery |
 | `cfg.tournament.duration_days` | `7` | Weekly tournament length |
-| `cfg.tournament.prizes` | `{ 10000, 5000, 2500 }` | Top-3 prize pool in bank |
-| `cfg.active_tournament.daily_hours` | `{ 12, 20 }` | Server-clock start times for active tournaments |
-| `cfg.active_tournament.zones` | 8 zones | Live zones eligible for active tournaments |
-| `cfg.treasure.base_chance` | `0.5` | % chance per catch (before level/bait bonuses) |
+| `cfg.tournament.prizes` | `{ 10000, 5000, 2500 }` | Weekly top-3 prize pool |
+| `cfg.active_tournament.daily_hours` | `{ 12, 20 }` | Server-clock start times for daily tournaments |
+| `cfg.active_tournament.zones` | 8 zones | Zones eligible to host a daily tournament |
+| `cfg.treasure.base_chance` | `0.5` | % treasure-drop chance per catch (before level/bait bonuses) |
 | `cfg.treasure.bait_bonus_mult` | `15.0` | Treasure-chance multiplier when using `treasure_bait` |
 | `cfg.nets.catch_interval` | `1800` | Seconds between net catch rolls |
 | `cfg.nets.max_per_player` | `2` | Per-player net cap |
-| `cfg.boat.rental_price` / `return_refund` | `500` / `0.25` | Boat rental price and refund fraction on return |
-| `cfg.rod.random_break` | `true` | If `false`, rods only break at zero durability |
+| `cfg.boat.rental_price` / `return_refund` | `500` / `0.25` | Boat rental price and the fraction refunded on return |
+| `cfg.rod.low_durability` | `10` | Remaining durability at which the player is warned the rod is wearing out |
 
-## Customisable Lua files
+<Note>
+  Offline weekly-tournament winners are paid on their next login. Offline daily-tournament winners forfeit — daily events are live, in-zone only.
+</Note>
+
+## Editable Lua files
 
 Each file is a plain Lua list — add, remove, reorder. Restart `cc_fishing` after editing.
 
@@ -96,7 +77,55 @@ Each file is a plain Lua list — add, remove, reorder. Restart `cc_fishing` aft
 | --- | --- |
 | `shared/fish.lua` | All catchable fish: tier, length range, XP, base price, zone preferences |
 | `shared/tiers.lua` | Tier display labels, order, icons |
-| `shared/zones.lua` | Fishing zones (polygons), per-zone boost/blacklist, treasure multiplier |
+| `shared/zones.lua` | Fishing zones, per-zone boost/blacklist, treasure multiplier |
 | `shared/equipment.lua` | Rods, baits, shop items — prices, level gates, boosts |
 | `shared/challenges.lua` | Daily challenge pool — match predicates, rewards, level gates |
 | `shared/treasures.lua` | Treasure loot tables and per-tier safe payouts |
+
+<Warning>
+  These files are not escrow-locked, but renaming a fish or item id means also renaming its inventory item (see [installation](/cc_fishing/installation)). Keep the ids in sync.
+</Warning>
+
+## Treasure minigame
+
+Cracking a sunken safe runs a minigame defined in `client/minigames.lua` (escrow-ignored). It returns `true` on success, `false` on fail/cancel — swap the body for anything with that contract and nothing else changes.
+
+By default it's the [ox_lib skill check](https://overextended.dev/ox_lib/Modules/Interface/Client/skillcheck), so there's no extra dependency out of the box:
+
+```lua
+treasure_safe = function()
+    return lib.skillCheck(cfg.treasure.safe_difficulty or 'medium')
+end,
+```
+
+`cfg.treasure.safe_difficulty` (`'easy' | 'medium' | 'hard'`) feeds the check. For a longer, multi-stage crack, pass an array — e.g. `lib.skillCheck({ 'easy', 'easy', 'hard' })`.
+
+To use the [`cc_minigames`](/cc_minigames/index) safe-cracker instead, swap the body (this needs `cc_minigames` running):
+
+```lua
+treasure_safe = function()
+    return exports.cc_minigames:Safe({
+        difficulty = cfg.treasure.safe_difficulty or 'medium',
+        variant    = 'bare',
+    })
+end,
+```
+
+Or use any other `cc_minigames` export — see the [minigames reference](/cc_minigames/minigames).
+
+## Admin commands
+
+Daily tournaments run on a schedule, but you can drive them manually. All four require the `cc_fishing.admin` ACE (or the `command` ACE).
+
+| Command | What it does |
+| --- | --- |
+| `/at_start [type] [zone_idx]` | Start a daily tournament now. Type defaults to the first configured type, zone to `1` |
+| `/at_end` | End the running daily tournament and pay out |
+| `/at_skip` | Drop the next scheduled slot |
+| `/at_schedule` | Print the upcoming schedule to the server console |
+
+Grant the ACE in `server.cfg`:
+
+```
+add_ace group.admin cc_fishing.admin allow
+```

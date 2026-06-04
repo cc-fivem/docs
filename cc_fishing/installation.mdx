@@ -6,11 +6,12 @@ icon: 'rocket'
 
 ## Requirements
 
-- A FiveM server with a working `cc_lib` resource.
+- A working [`cc_lib`](/cc_lib/index) install (provides the framework, inventory, notification, and target wrappers).
 - [ox_lib](https://github.com/overextended/ox_lib) and [oxmysql](https://github.com/overextended/oxmysql).
-- An inventory system (defaults assume **ox_inventory**; **qb-inventory** is supported).
+- An inventory system — **ox_inventory** or **qb-inventory**.
 - A MySQL database reachable via oxmysql.
-- Streaming enabled — `cc_fishing` ships a custom fish-net asset under `stream/`.
+
+The treasure safe uses the built-in ox_lib skill check by default. [`cc_minigames`](/cc_minigames/index) is only needed if you switch to it in `client/minigames.lua` — see [configuration](/cc_fishing/configuration#treasure-minigame).
 
 ## Steps
 
@@ -18,26 +19,26 @@ icon: 'rocket'
   <Step title="Place the resource">
     Copy `cc_fishing` into a resources directory the server loads. The repo ships under `resources/[cc]/cc_fishing/`.
   </Step>
-  <Step title="Import the database tables">
-    Run `install.sql` (in the resource root) against your MySQL database. It creates four tables:
+  <Step title="Database tables">
+    The resource creates its four tables on first start (`cfg.autoInstallDatabase = true`), so there's nothing to do here in most cases:
 
     ```
     cc_fishing_player         -- per-player level, xp, logbook, challenges
     cc_fishing_leaderboard    -- per-fish, per-player best length
-    cc_fishing_tournaments    -- weekly tournament history
+    cc_fishing_tournaments    -- weekly tournament history + prizes
     cc_fishing_nets           -- placed fish nets
     ```
 
-    Import via your usual tool (HeidiSQL, DBeaver, `mysql` CLI) — for example:
+    If your MySQL user can't run `CREATE TABLE` at runtime, set `cfg.autoInstallDatabase = false` and import `sql/install.sql` by hand instead:
 
     ```bash
-    mysql -u <user> -p <database> < resources/[cc]/cc_fishing/install.sql
+    mysql -u <user> -p <database> < resources/[cc]/cc_fishing/sql/install.sql
     ```
   </Step>
   <Step title="Add the inventory items">
-    Drop the matching item PNGs into your inventory's images folder (filenames must match the item name / `image` field). The image set ships under `resources/[cc]/cc_fishing/web/inventory_images/` if you need a starting pack.
+    Add the item definitions below, then drop the matching PNGs into your inventory's images folder (each filename must match the item's `image` field). The block reuses the legacy fishing image names, so any existing fishing image pack plugs in directly.
 
-    `weapon_pistol` and `weapon_marksmanpistol` are GTA weapon hashes — no item entry needed. `lockpick` is skipped because it ships in the default lists.
+    `weapon_pistol` and `weapon_marksmanpistol` are GTA weapon hashes — no item entry needed. `lockpick` ships in the default lists, so skip it if it's already there.
 
     <Tabs>
       <Tab title="ox_inventory">
@@ -231,10 +232,10 @@ icon: 'rocket'
     ensure cc_fishing
     ```
 
-    `cc_fishing`'s `fxmanifest.lua` declares `cc_lib`, `ox_lib`, and `oxmysql` as dependencies — FXServer will refuse to start it before they're up.
+    `cc_fishing`'s `fxmanifest.lua` declares `cc_lib`, `ox_lib`, and `oxmysql` as dependencies — FXServer won't start it before they're up. If you switch the treasure safe to `cc_minigames`, add `ensure cc_minigames` before `cc_fishing`.
   </Step>
-  <Step title="Restart ox_inventory">
-    Required so the new items register. Either restart the resource or restart the server.
+  <Step title="Restart your inventory">
+    Restart `ox_inventory` / `qb-inventory` (or the whole server) so the new items register.
   </Step>
   <Step title="Verify in-game">
     1. Drive to Cassidy Creek (default fishing NPC location, `(1302.95, 4228.7, 33.91)`). A boat-rod blip should be on your map.
@@ -244,10 +245,10 @@ icon: 'rocket'
     5. Drive to the pawnshop NPC in Mission Row (`(-1459.56, -413.97, 35.74)`) and sell the catch.
 
     <Tip>
-      Set `cfg.debug = true` in `shared/config.lua` to bypass cooldowns and log verbosely while you test.
+      Set `cfg.debug = true` in `shared/config.lua` for verbose server logging while you test.
     </Tip>
   </Step>
   <Step title="Configure">
-    Defaults are sensible, but most servers will want to move the NPCs, toggle modules, or rebalance prices. All tunables, NPC placement, module toggles, and customisable Lua files are covered in the [configuration guide](/cc_fishing/configuration).
+    Defaults are sensible, but most servers will want to move the NPCs, adjust payment sources, or rebalance prices. All tunables, NPC placement, admin commands, and editable Lua files are covered in the [configuration guide](/cc_fishing/configuration).
   </Step>
 </Steps>
