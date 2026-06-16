@@ -19,9 +19,9 @@ icon: 'rocket'
     Copy `cc_jewelryheist` into a resources directory the server loads. The repo ships it under `resources/[cc]/cc_jewelryheist/`.
   </Step>
   <Step title="Confirm the inventory items">
-    The three required items (`glass_cutter`, `hacking_device`, `weapon_bat`) and the loot items (`diamond_ring`, `goldchain`, `rolex`) all ship in the stock Qbox `ox_inventory` list — no edits needed on a default install.
+    The two required items (`glass_cutter`, `hacking_device`) and the loot items (`diamond_ring`, `goldchain`, `rolex`) all ship in the stock Qbox `ox_inventory` list — no edits needed on a default install. The cabinets are smashed with any equipped weapon, so there's no specific weapon requirement.
 
-    If you run a trimmed item list, add the two non-weapon required items:
+    If you run a trimmed item list, add the two required items:
 
     <Tabs>
       <Tab title="ox_inventory">
@@ -32,7 +32,7 @@ icon: 'rocket'
         hacking_device = { label = 'DataJack', weight = 600, stack = false, client = { image = 'hacking_device.png' } },
         ```
 
-        Drop the matching images into `ox_inventory/web/images/`. `weapon_bat` is a stock ox_inventory weapon — no config needed.
+        Drop the matching images into `ox_inventory/web/images/`.
       </Tab>
       <Tab title="qb-inventory">
         Add to `qb-core/shared/items.lua`
@@ -42,7 +42,7 @@ icon: 'rocket'
         hacking_device = { name = 'hacking_device', label = 'DataJack', weight = 600, unique = true, type = 'item', image = 'hacking_device.png', useable = false },
         ```
 
-        Drop the matching images into `qb-inventory/html/images/`. `weapon_bat` is a stock weapon — no config needed.
+        Drop the matching images into `qb-inventory/html/images/`.
       </Tab>
     </Tabs>
   </Step>
