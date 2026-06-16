@@ -1,0 +1,87 @@
+---
+title: "Installation"
+description: "Drop the resource in, confirm the items, ensure after cc_heistcontracts."
+icon: 'rocket'
+---
+
+## Requirements
+
+- A FiveM server already running [cc_heistcontracts](/cc_heistcontracts/installation).
+- [ox_lib](https://github.com/overextended/ox_lib), [oxmysql](https://github.com/overextended/oxmysql), [ox_target](https://github.com/overextended/ox_target).
+- A working `cc_lib` resource.
+- An inventory system (defaults assume **ox_inventory**).
+
+## Steps
+
+<Steps>
+  <Step title="Place the resource">
+    Copy `cc_cargoheist` into a resources directory the server loads. The repo ships it under `resources/[cc]/cc_cargoheist/`. There's no streamed map data or DB import — the yard props are spawned at runtime.
+  </Step>
+  <Step title="Confirm the inventory items">
+    The required `angle_grinder` and the `black_money` loot item both ship in the stock Qbox `ox_inventory` list — no edits needed on a default install. `weapon_pistol` is a stock weapon.
+
+    If you run a trimmed item list, add the grinder:
+
+    <Tabs>
+      <Tab title="ox_inventory">
+        Add to `ox_inventory/data/items.lua`
+
+        ```lua
+        angle_grinder = { label = 'Angle Grinder', weight = 500, stack = false, client = { image = 'angle_grinder.png' } },
+        ```
+
+        Drop `angle_grinder.png` (shipped under the resource's `images/`) into `ox_inventory/web/images/`.
+      </Tab>
+      <Tab title="qb-inventory">
+        Add to `qb-core/shared/items.lua`
+
+        ```lua
+        angle_grinder = { name = 'angle_grinder', label = 'Angle Grinder', weight = 500, unique = true, type = 'item', image = 'angle_grinder.png', useable = false },
+        ```
+
+        Drop `angle_grinder.png` into `qb-inventory/html/images/`.
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Ensure after cc_heistcontracts">
+    Order in `server.cfg`:
+
+    ```
+    ensure oxmysql
+    ensure ox_lib
+    ensure ox_target
+    ensure cc_lib
+    ensure cc_heistcontracts
+    ensure cc_cargoheist
+    ```
+
+    `cc_cargoheist`'s `fxmanifest.lua` already declares `cc_heistcontracts` as a dependency.
+  </Step>
+  <Step title="Verify in-game">
+    1. The contract is **level 1** and drips at weight `1.0`, so it rolls into the marketplace quickly. Lower `config.rotation.dripIntervalMs` in `cc_heistcontracts/shared/config.lua` if you want it instantly while testing.
+    2. Buy it for 1,500 VICE, grab an `angle_grinder` and a pistol, and drive to the assigned yard.
+    3. Read the manifest at the dock office, then cut the redacted containers. Cutting a decoy should vent gas and dock 5 minutes off the clock.
+
+    <Tip>
+      Set `cfg.debug = true` in `shared/config.lua` to bypass gates and log verbosely while testing.
+    </Tip>
+  </Step>
+</Steps>
+
+## Configure
+
+Guard stats, the decoy gas trap, the real-container count, the grinder/loot animations, and the dispatch payload all live in `shared/config.lua`. Restart the resource after editing.
+
+A few headline knobs:
+
+| Field | Default | What it does |
+| --- | --- | --- |
+| `cfg.use_global_loot_table` | `true` | Split the rolled total across the real containers; `false` expects per-container loot in the location files |
+| `cfg.yard.realMin` / `realMax` | `3` / `4` | How many of the spawned containers actually hold loot |
+| `cfg.guards.minCount` / `maxCount` | `4` / `8` | Guard count rolled per heist |
+| `cfg.guards.hostileRadiusMult` | `0.5` | Fraction of the yard radius a player must enter before passive guards turn hostile |
+| `cfg.gas.timePenalty` | `300` | Seconds docked off the clock for cutting a decoy (set `0` to disable) |
+| `cfg.gas.radius` / `durationMs` | `4.5` / `12000` | Gas cloud size and how long it lingers |
+| `cfg.dispatch` | `function(coords) ... end` | Police alert payload — replace to integrate with your dispatch resource |
+
+Each yard's container, guard, manifest, and office spawns live in `shared/locations/<id>.lua`. Drop a location from the `locations` array in `shared/contract.lua` to take a yard out of rotation.

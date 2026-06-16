@@ -1,0 +1,118 @@
+---
+title: "Installation"
+description: "Drop the resource in, register the store doors, ensure after cc_heistcontracts."
+icon: 'rocket'
+---
+
+## Requirements
+
+- A FiveM server already running [cc_heistcontracts](/cc_heistcontracts/installation).
+- [ox_lib](https://github.com/overextended/ox_lib) and [oxmysql](https://github.com/overextended/oxmysql).
+- A working `cc_lib` resource.
+- [cc_minigames](/cc_minigames/index) for the glass-cut and access-panel hacks.
+- An inventory system (defaults assume **ox_inventory**).
+
+## Steps
+
+<Steps>
+  <Step title="Place the resource">
+    Copy `cc_jewelryheist` into a resources directory the server loads. The repo ships it under `resources/[cc]/cc_jewelryheist/`.
+  </Step>
+  <Step title="Confirm the inventory items">
+    The three required items (`glass_cutter`, `hacking_device`, `weapon_bat`) and the loot items (`diamond_ring`, `goldchain`, `rolex`) all ship in the stock Qbox `ox_inventory` list — no edits needed on a default install.
+
+    If you run a trimmed item list, add the two non-weapon required items:
+
+    <Tabs>
+      <Tab title="ox_inventory">
+        Add to `ox_inventory/data/items.lua`
+
+        ```lua
+        glass_cutter = { label = 'Glass Cutter', weight = 500, stack = false, client = { image = 'glass_cutter.png' } },
+        hacking_device = { label = 'DataJack', weight = 600, stack = false, client = { image = 'hacking_device.png' } },
+        ```
+
+        Drop the matching images into `ox_inventory/web/images/`. `weapon_bat` is a stock ox_inventory weapon — no config needed.
+      </Tab>
+      <Tab title="qb-inventory">
+        Add to `qb-core/shared/items.lua`
+
+        ```lua
+        glass_cutter = { name = 'glass_cutter', label = 'Glass Cutter', weight = 500, unique = true, type = 'item', image = 'glass_cutter.png', useable = false },
+        hacking_device = { name = 'hacking_device', label = 'DataJack', weight = 600, unique = true, type = 'item', image = 'hacking_device.png', useable = false },
+        ```
+
+        Drop the matching images into `qb-inventory/html/images/`. `weapon_bat` is a stock weapon — no config needed.
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Register the store doors">
+    The heist needs two locked doors: the front `jewelry-entrance` (auto-locks at night) and the `jewelry-security` room.
+
+    <Tabs>
+      <Tab title="ox_doorlock">
+        Set `cfg.auto_insert_doors = true` in `shared/config.lua` and the resource inserts both doors into the `ox_doorlock` table on first start (skipping any names already present). Leave it `false` if you manage doors manually.
+      </Tab>
+      <Tab title="qb-doorlock">
+        `cfg.auto_insert_doors` only targets `ox_doorlock`. On `qb-doorlock`, paste these into `qb-doorlock/config/locations.lua` (inside `Config.DoorList`) and restart `qb-doorlock`. The entrance is a `double` door:
+
+        ```lua
+        Config.DoorList['jewelry-entrance'] = {
+            doors = {
+                { objHash = 1425919976, objYaw = 306, objCoords = vec3(-631.9553833007813, -236.33326721191407, 38.2065315246582) },
+                { objHash = 9467943,    objYaw = 306, objCoords = vec3(-630.426513671875, -238.4375457763672, 38.2065315246582) },
+            },
+            textCoords = vec3(-631.19091796875, -237.38540649414063, 38.2065315246582),
+            locked = true, pickable = false, distance = 2, doorType = 'double'
+        }
+        Config.DoorList['jewelry-security'] = {
+            objHash = 1335309163,
+            objCoords  = vec3(-629.1338500976563, -230.15170288085938, 38.20658493041992),
+            textCoords = vec3(-629.1338500976563, -230.15170288085938, 38.20658493041992),
+            objYaw = 36, locked = true, pickable = false, distance = 2
+        }
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Ensure after cc_heistcontracts">
+    Order in `server.cfg`:
+
+    ```
+    ensure oxmysql
+    ensure ox_lib
+    ensure cc_lib
+    ensure cc_minigames
+    ensure cc_heistcontracts
+    ensure cc_jewelryheist
+    ```
+
+    `cc_jewelryheist`'s `fxmanifest.lua` already declares `cc_heistcontracts` as a dependency.
+  </Step>
+  <Step title="Verify in-game">
+    1. The contract is **level 1** and drips at weight `1.0`, so it rolls into the marketplace quickly. Lower `config.rotation.dripIntervalMs` in `cc_heistcontracts/shared/config.lua` if you want it instantly while testing.
+    2. Make sure at least one **police** unit is online (`requiredPolice.count = 1`), or drop the gate for solo testing (see below).
+    3. Buy it for 1,500 VICE, grab the items, drive to Vangelico. By day, cut the centerpiece and the security guards spawn; by night, hack the access panel to get in first.
+
+    <Tip>
+      Set `cfg.debug = true` in `shared/config.lua` to bypass level / police / cooldown gates while testing. Remove the `requiredPolice` field in `shared/contract.lua` to drop the cop-count gate entirely.
+    </Tip>
+  </Step>
+</Steps>
+
+## Configure
+
+Loot tables, the day/night behaviour, guard damage, the closing-time teleport, and the dispatch payload all live in `shared/config.lua`, `shared/rewards.lua`, and `shared/location.lua`. Restart the resource after editing.
+
+A few headline knobs in `shared/config.lua`:
+
+| Field | Default | What it does |
+| --- | --- | --- |
+| `cfg.use_global_loot_table` | `true` | Split the rolled vitrine totals across all cabinets; `false` expects per-vitrine loot in `shared/location.lua` |
+| `cfg.enable_task_list` | `true` | Show the TaskUI panel during the run |
+| `cfg.auto_insert_doors` | `false` | Insert the two doors into `ox_doorlock` on start |
+| `cfg.teleport_out_at_close` | `true` | Teleport players still inside at closing (21:30) so the auto-lock doesn't trap them |
+| `cfg.debug` | `false` | Bypass gates and log verbosely |
+| `cfg.dispatch` | `function(location) ... end` | Police alert payload — replace to integrate with your dispatch resource |
+
+The minigames are swappable: `client/minigames.lua` wraps the `cc_minigames` Cutter (glass cut) and Verbal (panel hack) calls, so you can drop in any other `cc_minigames` game without touching the heist logic.

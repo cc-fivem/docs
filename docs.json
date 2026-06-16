@@ -92,6 +92,20 @@
               "cc_pacificheist/index",
               "cc_pacificheist/installation"
             ]
+          },
+          {
+            "group": "Jewelry Heist",
+            "pages": [
+              "cc_jewelryheist/index",
+              "cc_jewelryheist/installation"
+            ]
+          },
+          {
+            "group": "Cargo Heist",
+            "pages": [
+              "cc_cargoheist/index",
+              "cc_cargoheist/installation"
+            ]
           }
         ]
       },

@@ -1,0 +1,65 @@
+---
+title: "Introduction"
+description: "Heist module: registers the cargo container raid with cc_heistcontracts."
+icon: 'star'
+---
+
+`cc_cargoheist` is a heist module that plugs into [cc_heistcontracts](/cc_heistcontracts/index). It registers a single contract — **Cargo Container Raid** — that rotates across **10 industrial yards** around the map. A 1–4 player crew reads the shipping manifest at the dock office to learn which containers actually hold the shipment, then cuts those open with an angle grinder while dealing with the yard's armed guards.
+
+The twist is the manifest puzzle: the yard scatters many containers but only a few hold loot. Read the manifest and you go straight to the right ones. Skip it and you're cutting blind — the decoy containers vent gas and dock time off your clock.
+
+Everything in this page is a **default**. All of it lives in plain Lua files in `shared/` and is meant to be edited.
+
+## What's in the run
+
+- **Manifest puzzle** — a cargo clipboard at the dock office renders the live manifest via DUI texture replacement. The real containers are the ones whose consignee is redacted; match the painted 4-char IDs in the yard.
+- **Grinder cut scenes** — synced angle-grinder cuts with animated container doors, falling locks, sparks and audio.
+- **Decoy gas traps** — cutting a container that isn't on the manifest vents a BZ-gas cloud and deducts time from the heist clock.
+- **Armed guards** — 4–8 guards spawn passive and turn hostile when the crew closes in, opens fire, or takes a shot.
+- **Loot crate pry-open** — each real container holds a supply crate, looted with a crowbar pry-open synced scene.
+- **Police dispatch** — a 10-90 alert fires the moment the first guard is hit.
+
+## Required items
+
+Players need these before the dashboard will let them press **Start**. The list lives in `shared/contract.lua` under `itemsRequired`.
+
+| Item id | Inventory label | Default role in the run |
+| --- | --- | --- |
+| `angle_grinder` | Angle Grinder | Cutting open containers (not consumed) |
+| `weapon_pistol` (weapon) | Pistol | Required loadout for the guards |
+
+Both already exist in the shipped `ox_inventory` items list. See the [installation guide](/cc_cargoheist/installation).
+
+## Contract defaults
+
+Defined in `shared/contract.lua`. Every field is editable.
+
+| Field | Default | What it does |
+| --- | --- | --- |
+| `id` | `cargo_container` | Internal contract id |
+| `difficulty` | `easy` | Display tag in the dashboard |
+| `weight` | `1.0` | Rarity weight for marketplace drips (common) |
+| `levelRequired` | `1` | Minimum heist level to purchase |
+| `price` | `1500` | VICE cost to buy the slot |
+| `crewSize` | `{ min = 1, max = 4 }` | Crew size bounds |
+| `duration` | `1200` | Soft cap in seconds before the slot auto-fails |
+| `cooldown` | `900` | Per-location cooldown after each completion |
+| `reward` | `{ vice = 1500, xp = 250 }` | Credited automatically on success |
+| `locations` | 10 | Rotating yards — MWS, Grapeseed, La Mesa, Overpass, Power Station, Terminal Docks, Covington, Elysian Island, Joshua Road Quarry, Sandy Airfield |
+
+Each yard's layout (container, guard, manifest, and office spawns) lives in `shared/locations/<id>.lua`. All editable.
+
+## Loot table
+
+`shared/rewards.lua` defines the global loot. When `cfg.use_global_loot_table = true` (default), the rolled total is split across the real containers at the site — `black_money`, `4000–8000` by default. Set it `false` to define loot per-container in the location files.
+
+## Dependencies
+
+- [`cc_heistcontracts`](/cc_heistcontracts/index)
+- [`cc_lib`](/cc_lib/index) — TaskUI, Groups, Inventory, Target, Notification, Dispatch wrappers
+- [ox_lib](https://github.com/overextended/ox_lib), [ox_target](https://github.com/overextended/ox_target), [ox_inventory](https://github.com/overextended/ox_inventory)
+- A police job framework that responds to `cc.Dispatch.Alert`
+
+## Next steps
+
+- [Installation](/cc_cargoheist/installation) — place the resource, confirm the items, ensure after `cc_heistcontracts`.

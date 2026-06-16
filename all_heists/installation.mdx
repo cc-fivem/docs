@@ -8,9 +8,10 @@ Follow this page if you own **all** heist modules. Each module also ships its ow
 
 ## Requirements
 
-- A FiveM server already running [cc_heistcontracts](/cc_heistcontracts/installation) — all four modules register contracts against it.
-- [ox_lib](https://github.com/overextended/ox_lib) and [oxmysql](https://github.com/overextended/oxmysql).
+- A FiveM server already running [cc_heistcontracts](/cc_heistcontracts/installation) — every module registers contracts against it.
+- [ox_lib](https://github.com/overextended/ox_lib), [oxmysql](https://github.com/overextended/oxmysql), and [ox_target](https://github.com/overextended/ox_target) (`cc_cargoheist`).
 - A working `cc_lib` resource.
+- [cc_minigames](/cc_minigames/index) — `cc_jewelryheist`'s glass-cut and hack skill checks.
 - An inventory system (defaults assume **ox_inventory**).
 - Streaming enabled — `cc_pacificheist` ships custom jammer assets under `stream/`.
 
@@ -24,6 +25,8 @@ Follow this page if you own **all** heist modules. Each module also ships its ow
     resources/[cc]/cc_fleecaheist/
     resources/[cc]/cc_paletoheist/
     resources/[cc]/cc_pacificheist/
+    resources/[cc]/cc_jewelryheist/
+    resources/[cc]/cc_cargoheist/
     ```
   </Step>
   <Step title="Add the inventory items">
@@ -44,6 +47,9 @@ Follow this page if you own **all** heist modules. Each module also ships its ow
         
         signal_jammer = { label = 'Signal Jammer', weight = 400 },
         thermite = { label = 'Thermite Charge', weight = 800 },
+        
+        glass_cutter = { label = 'Glass Cutter', weight = 500, stack = false },
+        angle_grinder = { label = 'Angle Grinder', weight = 500, stack = false },
         ```
 
         Add the following weapons to `ox_inventory/data/weapons.lua`
@@ -69,6 +75,9 @@ Follow this page if you own **all** heist modules. Each module also ships its ow
         laptop_elite = { name = 'laptop_elite', label = 'BlackBook Mk-III', weight = 3200, unique = true, type = 'item', image = 'laptop_elite.png', useable = false },
         signal_jammer = { name = 'signal_jammer', label = 'Signal Jammer', weight = 400, unique = false, type = 'item', image = 'signal_jammer.png', useable = false },
         thermite = { name = 'thermite', label = 'Thermite Charge', weight = 800, unique = false, type = 'item', image = 'thermite.png', useable = false },
+
+        glass_cutter = { name = 'glass_cutter', label = 'Glass Cutter', weight = 500, unique = true, type = 'item', image = 'glass_cutter.png', useable = false },
+        angle_grinder = { name = 'angle_grinder', label = 'Angle Grinder', weight = 500, unique = true, type = 'item', image = 'angle_grinder.png', useable = false },
         
         weapon_digiscanner = { name = 'weapon_digiscanner', label = 'RF Sweeper', weight = 12000, unique = true, useable = false },
         ```
@@ -1418,13 +1427,16 @@ end)
     ensure ox_inventory
     ensure ox_target
     ensure cc_lib
+    ensure cc_minigames
     ensure cc_heistcontracts
     ensure cc_fleecaheist
     ensure cc_paletoheist
     ensure cc_pacificheist
+    ensure cc_jewelryheist
+    ensure cc_cargoheist
     ```
 
-    Each module's `fxmanifest.lua` declares `cc_heistcontracts` as a dependency, so FXServer will refuse to start any of them before the parent is up. Wrong order = `No such export RegisterContract in resource cc_heistcontracts`.
+    Each module's `fxmanifest.lua` declares `cc_heistcontracts` as a dependency, so FXServer will refuse to start any of them before the parent is up. Wrong order = `No such export RegisterContract in resource cc_heistcontracts`. `cc_jewelryheist` also needs `cc_minigames` up first for its glass-cut and hack skill checks.
   </Step>
   <Step title="(Optional) Register the heist doors">
     <Tabs>
@@ -1438,9 +1450,11 @@ end)
         cfg.auto_insert_doors = true
         -- cc_pacificheist/shared/config.lua
         cfg.auto_insert_doors = true
+        -- cc_jewelryheist/shared/config.lua
+        cfg.auto_insert_doors = true
         ```
 
-        Leave any of them `false` if you manage that heist's doors manually.
+        Leave any of them `false` if you manage that heist's doors manually. `cc_cargoheist` has no doors.
       </Tab>
       <Tab title="qb-doorlock">
         `cfg.auto_insert_doors` only targets `ox_doorlock`. On `qb-doorlock`, paste each heist's `Config.DoorList` entries into `qb-doorlock/config/locations.lua` and restart `qb-doorlock`. The full per-heist snippets live on the individual installation pages:
@@ -1448,6 +1462,9 @@ end)
         - [cc_fleecaheist/installation](/cc_fleecaheist/installation) — the five Fleeca branches plus the Pink Cage gate.
         - [cc_paletoheist/installation](/cc_paletoheist/installation) — the Paleto bank doors and thermite door.
         - [cc_pacificheist/installation](/cc_pacificheist/installation) — the Pacific Standard vault, cellar, and reception doors.
+        - [cc_jewelryheist/installation](/cc_jewelryheist/installation) — the Vangelico entrance and security-room doors.
+
+        `cc_cargoheist` has no doors.
       </Tab>
     </Tabs>
   </Step>
@@ -1462,8 +1479,8 @@ end)
   </Step>
   <Step title="Verify in-game">
     1. Use a `heist_tablet` to open the dashboard.
-    2. With drips on default (3 min), all four contracts roll into the marketplace within a few intervals. Lower `config.rotation.dripIntervalMs` in `cc_heistcontracts/shared/config.lua` (e.g. `5 * 1000`) and restart `cc_heistcontracts` to see them faster.
-    3. Each contract has its own level gate — Fleeca `1`, Paleto `3`, Pacific `5`. Use `/heist:grantxp <playerId> <amount>` if you've enabled the admin command.
+    2. With drips on default (3 min), every contract rolls into the marketplace within a few intervals. Lower `config.rotation.dripIntervalMs` in `cc_heistcontracts/shared/config.lua` (e.g. `5 * 1000`) and restart `cc_heistcontracts` to see them faster.
+    3. Each contract has its own level gate — Fleeca `1`, Jewelry `1`, Cargo `1`, Paleto `3`, Pacific `5`. Use `/heist:grantxp <playerId> <amount>` if you've enabled the admin command.
     4. Watch the server console on first Pacific run for `Streaming pacificheist resource 'cc_jammer.ytyp'` — no error means the custom jammer props are loading.
 
     <Tip>
@@ -1479,3 +1496,5 @@ This page only covers the consolidated steps. For loot tables, branch disabling,
 - [Fleeca Heist](/cc_fleecaheist/index) · [installation](/cc_fleecaheist/installation)
 - [Paleto Heist](/cc_paletoheist/index) · [installation](/cc_paletoheist/installation)
 - [Pacific Heist](/cc_pacificheist/index) · [installation](/cc_pacificheist/installation)
+- [Jewelry Heist](/cc_jewelryheist/index) · [installation](/cc_jewelryheist/installation)
+- [Cargo Heist](/cc_cargoheist/index) · [installation](/cc_cargoheist/installation)

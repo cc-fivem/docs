@@ -1,0 +1,66 @@
+---
+title: "Introduction"
+description: "Heist module: registers the Vangelico jewelry store robbery with cc_heistcontracts."
+icon: 'star'
+---
+
+`cc_jewelryheist` is a heist module that plugs into [cc_heistcontracts](/cc_heistcontracts/index). It registers a single contract — **Vangelico Jewelry Heist** — at the jewelry store on Portola Drive. It's the entry-level heist: a 1–2 player crew cuts the centerpiece display, hacks or walks through the entrance depending on the time of day, and smashes the cabinets before the cops arrive.
+
+The run plays differently by time of day. **During the day** the doors are open, but the first overt action (cutting glass or smashing a cabinet) spawns nightstick security guards. **At night** the entrance is auto-locked, so the crew hacks the access panel to get in — and the guards stay home.
+
+Everything in this page is a **default**. All of it lives in plain Lua files in `shared/` and is meant to be edited.
+
+## What's in the run
+
+- **Glass-cut centerpiece** — a `cc_minigames` Cutter skill-check (keep cutting without overheating) to lift the diamond from the display case.
+- **Cabinet smashing** — break the surrounding vitrines with a bat for the bulk loot; each is a RayFire-destroyed cabinet.
+- **Day guards** — two `s_m_m_security_01` nightstick guards spawn on the first overt action during business hours.
+- **Night hack** — an access-panel prop the crew hacks (`cc_minigames` Verbal) to unlock the auto-locked entrance after closing.
+- **Necklace grabs** — animated grab points scattered through the store for extra pickups.
+- **Police dispatch** — a 10-90 alert fires to police, troopers and sheriffs through `cc.Dispatch.Alert`.
+
+## Required items
+
+Players need these before the dashboard will let them press **Start**. The list lives in `shared/contract.lua` under `itemsRequired`.
+
+| Item id | Inventory label | Default role in the run |
+| --- | --- | --- |
+| `glass_cutter` | Glass Cutter | Cutting the centerpiece display |
+| `hacking_device` | DataJack | Hacking the access panel at night |
+| `weapon_bat` (weapon) | Bat | Smashing the cabinets |
+
+All three already exist in the shipped `ox_inventory` items list. See the [installation guide](/cc_jewelryheist/installation).
+
+## Contract defaults
+
+Defined in `shared/contract.lua`. Every field is editable.
+
+| Field | Default | What it does |
+| --- | --- | --- |
+| `id` | `jewelry_heist` | Internal contract id |
+| `difficulty` | `easy` | Display tag in the dashboard |
+| `weight` | `1.0` | Rarity weight for marketplace drips (common) |
+| `levelRequired` | `1` | Minimum heist level to purchase |
+| `price` | `1500` | VICE cost to buy the slot |
+| `crewSize` | `{ min = 1, max = 2 }` | Crew size bounds |
+| `duration` | `900` | Soft cap in seconds before the slot auto-fails |
+| `cooldown` | `1800` | Server-wide cooldown after each completion |
+| `reward` | `{ vice = 1000, xp = 150 }` | Credited automatically on success |
+| `requiredPolice` | `{ jobs = { 'police' }, count = 1 }` | Minimum cops online to start |
+| `locations` | 1 | `vangelico` — Vangelico Jewelry Store |
+
+## Loot table
+
+`shared/rewards.lua` defines the global loot. The centerpiece `display` yields a single `diamond_ring`; the `vitrines` category's rolled totals are split across every smashed cabinet (`goldchain`, `rolex`). All three are stock Qbox loot items.
+
+## Dependencies
+
+- [`cc_heistcontracts`](/cc_heistcontracts/index)
+- [`cc_lib`](/cc_lib/index) — TaskUI, Groups, Inventory, Target, Notification, Dispatch wrappers
+- [`cc_minigames`](/cc_minigames/index) — the glass-cut and hack skill checks
+- [ox_lib](https://github.com/overextended/ox_lib), [oxmysql](https://github.com/overextended/oxmysql)
+- A police job framework that responds to `cc.Dispatch.Alert`
+
+## Next steps
+
+- [Installation](/cc_jewelryheist/installation) — place the resource, register the doors, ensure after `cc_heistcontracts`.
