@@ -14,16 +14,17 @@ below).
 
 - `index.mdx` — what it is, feature overview, NPCs, dependencies.
 - `installation.mdx` — place, items (ox + qb tabs), ensure order, verify.
-- `configuration.mdx` — NPC placement, payment sources, tunables, editable files.
-
-Three pages is the whole set. There are no customer-facing exports, so no
-`exports.mdx`.
+- `configuration.mdx` — module toggles, NPC placement, payment sources, tunables, editable files.
+- `exports.mdx` — read-only server exports (level/xp/zone).
 
 ## Facts the docs rely on
 
-- **No module toggle system.** There is no `cfg.modules`. Every feature (nets,
-  treasure, tournaments, challenges, rental) is always on. Don't document toggling
-  them. The only `enabled` flag in config is `cfg.sound.enabled` (minigame audio).
+- **Module toggles exist.** `cfg.modules` gates `pawnshop_ped`, `anchor`,
+  `boat_rentals`, `nets`, `treasure`, `logbook`, and `tournaments.{weekly,daily}`.
+  Core fishing (fishing NPC, casting, selling fish) is always on and has no toggle;
+  neither does bait digging (the shovel is not under the `treasure` toggle).
+  Disabling `treasure` also stops new map drops but still lets players sell treasure
+  loot they already hold.
 - **Database auto-installs.** `cfg.autoInstallDatabase = true` + `server/db_init.lua`
   create the four tables on first start. The `sql/install.sql` import is the
   fallback for users whose DB account can't `CREATE TABLE` at runtime — not a
@@ -32,8 +33,11 @@ Three pages is the whole set. There are no customer-facing exports, so no
   `cc_fishing_tournaments` (weekly history + queued prizes), `cc_fishing_nets`.
 - **The treasure minigame is swappable** in `client/minigames.lua` (escrow-ignored,
   fleeca pattern: returns a table of named wrappers, each returning a bool). The
-  `treasure_safe` entry defaults to **ox_lib `lib.skillCheck`** — no extra
-  dependency. `cfg.treasure.safe_difficulty` (`'easy'|'medium'|'hard'`) feeds it.
+  `treasure_safe` entry now **defaults to `return true`** (no minigame — safe opens
+  on interact) because ox_lib `lib.skillCheck` cancels itself underwater, where
+  safes are opened. Both `exports.cc_minigames:Safe` (works underwater) and
+  `lib.skillCheck` (land-only) ship commented as opt-ins.
+  `cfg.treasure.safe_difficulty` (`'easy'|'medium'|'hard'`) feeds either one.
 - **`cc_minigames` is OPTIONAL**, not a default dependency. It's only needed if the
   owner switches `treasure_safe` to the commented `exports.cc_minigames:Safe`
   alternative in `client/minigames.lua`. It's not in `fxmanifest.lua` dependencies
@@ -55,7 +59,9 @@ Three pages is the whole set. There are no customer-facing exports, so no
 
 ## Traps that bit a previous revision
 
-- Documented a `cfg.modules` block with 10 toggles — it never existed.
+- Documented a `cfg.modules` block with 10 toggles — the real block (added later)
+  has 6 flags + a nested `tournaments.{weekly,daily}`. Match the shipped shape, not
+  the old invented one.
 - Documented `cfg.rod.random_break` — never existed.
 - Pointed at `web/inventory_images/` for an image pack — no such folder.
 - Claimed `cfg.debug = true` bypasses cooldowns — it only logs.

@@ -6,6 +6,40 @@ icon: 'sliders'
 
 Everything `cc_fishing` exposes for tuning lives in `shared/config.lua` unless noted. Paths are relative to the resource root. Restart `cc_fishing` after editing.
 
+## Module toggles
+
+`cfg.modules`. Flip any to `false` to disable that feature entirely — its NPCs, blips, target options, useable items, menu entries, and background loops all go dormant. Core fishing (the fishing NPC, casting, and selling fish) is always on.
+
+```lua
+cfg.modules = {
+    pawnshop_ped = true,   -- the dedicated fish-selling NPC + blip
+    anchor       = true,   -- boat anchor useable item
+    boat_rentals = true,   -- rent/return boat + the menu entries for it
+    nets         = true,   -- placeable fishing nets
+    treasure     = true,   -- treasure hunts, maps, sunken safes
+    logbook      = true,   -- logbook useable item
+    tournaments  = {
+        weekly = true,     -- rolling 7-day tournament
+        daily  = true,     -- scheduled live daily events
+    },
+}
+```
+
+| Toggle | What turning it off removes |
+| --- | --- |
+| `pawnshop_ped` | The pawnshop NPC and its blip. Selling still works at the fishing NPC |
+| `anchor` | The `anchor` item's effect |
+| `boat_rentals` | The rent/return options in the fishing menu |
+| `nets` | Placing, tending, and collecting fishing nets |
+| `treasure` | Treasure map drops, maps, and sunken safes. Bait digging is unaffected |
+| `logbook` | The `logbook` item |
+| `tournaments.weekly` | The weekly tournament and its menu entry |
+| `tournaments.daily` | The daily live tournaments and their menu entry |
+
+<Note>
+  Disabling `treasure` stops new treasure maps from dropping, but players can still sell treasure loot they already hold.
+</Note>
+
 ## NPC placement
 
 `cfg.npc`. Change the model or coords and restart; blips, peds, and target zones rebuild from this block.
@@ -90,17 +124,17 @@ Each file is a plain Lua list — add, remove, reorder. Restart `cc_fishing` aft
 
 Cracking a sunken safe runs a minigame defined in `client/minigames.lua` (escrow-ignored). It returns `true` on success, `false` on fail/cancel — swap the body for anything with that contract and nothing else changes.
 
-By default it's the [ox_lib skill check](https://overextended.dev/ox_lib/Modules/Interface/Client/skillcheck), so there's no extra dependency out of the box:
+Out of the box there's **no minigame** — the safe opens on interact:
 
 ```lua
 treasure_safe = function()
-    return lib.skillCheck(cfg.treasure.safe_difficulty or 'medium')
+    return true
 end,
 ```
 
-`cfg.treasure.safe_difficulty` (`'easy' | 'medium' | 'hard'`) feeds the check. For a longer, multi-stage crack, pass an array — e.g. `lib.skillCheck({ 'easy', 'easy', 'hard' })`.
+Safes are opened underwater, where the [ox_lib skill check](https://overextended.dev/ox_lib/Modules/Interface/Client/skillcheck) cancels itself instantly, so it's not the default. Both alternatives ship commented in the file. To add a real gate, pick one.
 
-To use the [`cc_minigames`](/cc_minigames/index) safe-cracker instead, swap the body (this needs `cc_minigames` running):
+The [`cc_minigames`](/cc_minigames/index) safe-cracker works underwater (needs `cc_minigames` running):
 
 ```lua
 treasure_safe = function()
@@ -111,4 +145,12 @@ treasure_safe = function()
 end,
 ```
 
-Or use any other `cc_minigames` export — see the [minigames reference](/cc_minigames/minigames).
+The ox_lib skill check works only for **land-based** safes:
+
+```lua
+treasure_safe = function()
+    return lib.skillCheck(cfg.treasure.safe_difficulty or 'medium')
+end,
+```
+
+`cfg.treasure.safe_difficulty` (`'easy' | 'medium' | 'hard'`) feeds either one. For a longer, multi-stage crack, pass an array — e.g. `lib.skillCheck({ 'easy', 'easy', 'hard' })`. Or use any other `cc_minigames` export — see the [minigames reference](/cc_minigames/minigames).

@@ -1,0 +1,59 @@
+---
+title: "Exports"
+description: "Server exports for reading a player's fishing level, XP, and current zone."
+icon: 'plug'
+---
+
+`cc_fishing` exposes read-only **server** exports for pulling a player's fishing state into your own resources — a HUD, a levels bridge, a Discord bot, whatever. They never change anything.
+
+Every export takes the player's server id and returns `nil` when that player has no loaded fishing profile (offline, or not yet loaded). Levels are 0-based, matching the number shown in the in-game menu.
+
+```lua
+local level = exports.cc_fishing:GetPlayerLevel(src)
+if level then
+    print(('player %s is fishing level %d'):format(src, level))
+end
+```
+
+## Reference
+
+| Export | Returns |
+| --- | --- |
+| `GetPlayerXP(src)` | Total accumulated fishing XP, or `nil` |
+| `GetPlayerLevel(src)` | Current level (0-based), or `nil` |
+| `GetXPForNextLevel(src)` | Absolute XP total needed to reach the next level, or `nil` at max level / no profile |
+| `GetXPUntilNextLevel(src)` | XP still needed from the player's current total to hit the next level. `0` at max level, `nil` with no profile |
+| `GetPlayerProgress(src)` | A table with the full progress breakdown (below), or `nil` |
+| `GetPlayerZone(src)` | The fishing zone the player is currently in, or `nil` |
+
+## GetPlayerProgress
+
+One call for everything the others return, so a HUD doesn't have to make five round-trips.
+
+```lua
+local p = exports.cc_fishing:GetPlayerProgress(src)
+-- p = {
+--   level             = 4,      -- current level (0-based)
+--   xp                = 3400,   -- total XP
+--   pct               = 27,     -- % progress toward the next level
+--   current_threshold = 3000,   -- XP total at which the current level began
+--   next_threshold    = 4500,   -- XP total needed for the next level (nil at max)
+--   xp_until_next     = 1100,   -- XP still to go (0 at max)
+--   max_level         = false,  -- true once there's no higher level
+-- }
+```
+
+## GetPlayerZone
+
+Returns the fishing zone the player's ped is currently inside, matched against the polygons in `shared/zones.lua`. `nil` when they're not in any zone.
+
+```lua
+local zone = exports.cc_fishing:GetPlayerZone(src)
+-- zone = { index = 2, name = 'Alamo Sea' }   -- or nil
+```
+
+`index` is the 1-based position in `zones.fishing`; `name` is that zone's `name` field.
+
+<Note>
+  These exports live in `server/custom.lua`, which is escrow-ignored — you can add your own exports alongside them there.
+</Note>

@@ -52,7 +52,8 @@
             "pages": [
               "cc_fishing/index",
               "cc_fishing/installation",
-              "cc_fishing/configuration"
+              "cc_fishing/configuration",
+              "cc_fishing/exports"
             ]
           },
           {
