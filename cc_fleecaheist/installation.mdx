@@ -117,13 +117,98 @@ icon: 'rocket'
 
     `cc_fleecaheist`'s `fxmanifest.lua` already declares `cc_heistcontracts` as a dependency, so FXServer will refuse to start it before the parent is up. Wrong order = `No such export RegisterContract in resource cc_heistcontracts`.
   </Step>
-  <Step title="(Optional) Register the branch doors">
+  <Step title="Register the branch doors">
+    Door entries are per-map — gabz and FM Fleeca Banks v2 use different door props at different positions, so use the set matching your map.
+
+    <Note>
+      On FM Fleeca Banks v2 the vault opens through the door system, so the six `fm-*-vault` doors are **required** — without them the vault never opens after the panel hack. On gabz the vault is animated by the script and needs no door entry.
+    </Note>
+
     <Tabs>
       <Tab title="ox_doorlock">
-        Set `cfg.auto_insert_doors = true` in `shared/config.lua` and the resource will insert its branch doors into the `ox_doorlock` table on first start (skipping any names already present). Leave it `false` if you manage doors manually.
+        Set `cfg.auto_insert_doors = true` in `shared/config.lua` and the resource will insert the door set for your detected map into the `ox_doorlock` table on first start (skipping any names already present). Leave it `false` if you manage doors manually.
       </Tab>
       <Tab title="qb-doorlock">
-        `cfg.auto_insert_doors` only targets `ox_doorlock`. On `qb-doorlock`, paste these entries into `qb-doorlock/config/locations.lua` (inside `Config.DoorList`) and restart `qb-doorlock`:
+        `cfg.auto_insert_doors` only targets `ox_doorlock`. On `qb-doorlock`, paste the entries for your map into `qb-doorlock/config/locations.lua` (inside `Config.DoorList`) and restart `qb-doorlock`.
+
+        **FM Fleeca Banks v2:**
+
+        ```lua
+        Config.DoorList['fm-harmony-reception'] = {
+            objHash = 159592337,
+            objCoords  = vec3(1173.33447265625, 2710.978759765625, 37.164787292480),
+            textCoords = vec3(1173.33447265625, 2710.978759765625, 37.164787292480),
+            objYaw = 0, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['fm-harmony-vault'] = {
+            objHash = -219621528,
+            objCoords  = vec3(1174.5103759765626, 2716.89013671875, 38.389808654785),
+            textCoords = vec3(1174.5103759765626, 2716.89013671875, 38.389808654785),
+            objYaw = 0, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['fm-hawick-reception'] = {
+            objHash = 159592337,
+            objCoords  = vec3(-350.68939208984, -54.407382965088, 48.113330841064),
+            textCoords = vec3(-350.68939208984, -54.407382965088, 48.113330841064),
+            objYaw = 161, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['fm-hawick-vault'] = {
+            objHash = -219621528,
+            objCoords  = vec3(-353.73843383789, -59.606254577637, 49.338352203369),
+            textCoords = vec3(-353.73843383789, -59.606254577637, 49.338352203369),
+            objYaw = 161, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['fm-legion-reception'] = {
+            objHash = 159592337,
+            objCoords  = vec3(150.05862426758, -1045.23486328125, 28.444828033447),
+            textCoords = vec3(150.05862426758, -1045.23486328125, 28.444828033447),
+            objYaw = 160, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['fm-legion-vault'] = {
+            objHash = -219621528,
+            objCoords  = vec3(146.91809082031, -1050.37890625, 29.669849395752),
+            textCoords = vec3(146.91809082031, -1050.37890625, 29.669849395752),
+            objYaw = 160, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['fm-ocean-reception'] = {
+            objHash = 159592337,
+            objCoords  = vec3(-2958.3439941406, 484.50921630859, 14.774741172791),
+            textCoords = vec3(-2958.3439941406, 484.50921630859, 14.774741172791),
+            objYaw = 268, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['fm-ocean-vault'] = {
+            objHash = -219621528,
+            objCoords  = vec3(-2952.4812011719, 483.11196899414, 15.999762535095),
+            textCoords = vec3(-2952.4812011719, 483.11196899414, 15.999762535095),
+            objYaw = 268, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['fm-dperro-reception'] = {
+            objHash = 159592337,
+            objCoords  = vec3(-1209.2384033203, -333.66687011719, 36.857788085938),
+            textCoords = vec3(-1209.2384033203, -333.66687011719, 36.857788085938),
+            objYaw = 207, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['fm-dperro-vault'] = {
+            objHash = -219621528,
+            objCoords  = vec3(-1207.6163330078, -339.47152709961, 38.082809448242),
+            textCoords = vec3(-1207.6163330078, -339.47152709961, 38.082809448242),
+            objYaw = 207, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['fm-pinkcage-reception'] = {
+            objHash = 159592337,
+            objCoords  = vec3(314.39031982422, -283.60040283203, 53.241542816162),
+            textCoords = vec3(314.39031982422, -283.60040283203, 53.241542816162),
+            objYaw = 160, locked = true, pickable = false, distance = 2
+        }
+        Config.DoorList['fm-pinkcage-vault'] = {
+            objHash = -219621528,
+            objCoords  = vec3(311.25155639648, -288.74560546875, 54.466564178467),
+            textCoords = vec3(311.25155639648, -288.74560546875, 54.466564178467),
+            objYaw = 160, locked = true, pickable = false, distance = 2
+        }
+        ```
+
+        **Gabz:**
 
         ```lua
         Config.DoorList['legion-gate'] = {
